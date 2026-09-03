@@ -21,35 +21,11 @@ function normalizeEmail(value) {
   return value.trim().toLowerCase();
 }
 
-window.addEventListener("message", (event) => {
-  const data = event.data || {};
-
-  if (data.source !== "patch-paper-subscription") {
-    return;
-  }
-
-  submitButton.disabled = false;
-
-  if (data.ok && data.status === "subscribed") {
-    form.reset();
-    setStatus("訂閱完成。");
-    return;
-  }
-
-  if (data.ok && data.status === "duplicate") {
-    form.reset();
-    setStatus("這個 Email 已訂閱。");
-    return;
-  }
-
-  setStatus(data.message || "送出失敗。請檢查 Apps Script URL。", true);
-});
-
-form?.addEventListener("submit", (event) => {
+form?.addEventListener("submit", async (event) => {
+  event.preventDefault();
   setStatus("");
 
   if (!isConfigured()) {
-    event.preventDefault();
     setStatus("請先填入 Apps Script URL。", true);
     return;
   }
@@ -59,23 +35,29 @@ form?.addEventListener("submit", (event) => {
   const email = normalizeEmail(emailInput.value);
 
   if (!email || !emailInput.checkValidity()) {
-    event.preventDefault();
     setStatus("請輸入有效 Email。", true);
     return;
   }
 
   emailInput.value = email;
   userAgentInput.value = navigator.userAgent || "";
-  form.action = APPS_SCRIPT_URL;
   submitButton.disabled = true;
   setStatus("送出中。");
 
-  window.setTimeout(() => {
-    if (submitButton.disabled) {
-      submitButton.disabled = false;
-      setStatus("沒有收到回應。請確認 Apps Script 已開放存取。", true);
-    }
-  }, 12000);
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      body: new FormData(form),
+    });
+
+    form.reset();
+    setStatus("訂閱完成。");
+  } catch (error) {
+    setStatus("送出失敗。請稍後再試。", true);
+  } finally {
+    submitButton.disabled = false;
+  }
 });
 
 function showClickMood(event) {
