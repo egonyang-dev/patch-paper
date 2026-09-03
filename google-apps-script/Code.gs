@@ -265,9 +265,9 @@ function iframeResponse_(payload) {
     "<p>" +
     escapeHtml_(message) +
     "</p>" +
-    "<script>window.parent.postMessage(" +
+    "<script>(function(){var payload=" +
     safePayload +
-    ", '*');</script>" +
+    ";try{window.parent.postMessage(payload,'*')}catch(error){}try{window.top.postMessage(payload,'*')}catch(error){}}());</script>" +
     "</body></html>";
 
   return HtmlService.createHtmlOutput(html)
