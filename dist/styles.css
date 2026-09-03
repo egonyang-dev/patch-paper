@@ -1,0 +1,416 @@
+:root {
+  --background: #fbfaf6;
+  --text: #174ea6;
+  --muted: #df8eaa;
+  --line: #efbfd0;
+  --pink: #d96f9a;
+  --blue: #174ea6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family:
+    "Helvetica Neue", Arial, "Noto Sans TC", "PingFang TC", sans-serif;
+  line-height: 1.55;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px clamp(18px, 4vw, 48px);
+  border-bottom: 1px solid var(--line);
+  background: rgba(251, 250, 246, 0.88);
+  backdrop-filter: blur(12px);
+  color: var(--pink);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.page {
+  width: min(1120px, calc(100% - 36px));
+  margin: 0 auto;
+}
+
+.hero {
+  display: block;
+  padding: clamp(42px, 8vw, 96px) 0 clamp(34px, 7vw, 80px);
+  border-bottom: 1px solid var(--line);
+}
+
+.hero-title {
+  margin-top: 20px;
+}
+
+.hero-ticker {
+  width: 100%;
+  overflow: hidden;
+}
+
+.ticker-track {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  animation: ticker-scroll 20s linear infinite;
+}
+
+.ticker-item {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 0.42em;
+  padding-right: 1.4em;
+  font-size: clamp(17px, 3.2vw, 38px);
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.label-blue {
+  color: var(--blue);
+}
+
+.label-pink,
+.label-mark {
+  color: var(--pink);
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
+
+.eyebrow {
+  margin: 0 0 14px;
+  color: var(--pink);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p,
+em {
+  margin-top: 0;
+}
+
+h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.wordmark {
+  width: 100%;
+  margin: 0;
+}
+
+.wordmark img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+h2 {
+  color: var(--pink);
+  margin: 0;
+  font-size: clamp(30px, 5vw, 56px);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.statement,
+.subscribe,
+.details,
+.archive {
+  display: grid;
+  grid-template-columns: 0.42fr 1fr;
+  gap: clamp(22px, 5vw, 68px);
+  padding: clamp(34px, 7vw, 82px) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.statement {
+  display: block;
+}
+
+.statement p {
+  max-width: 820px;
+  margin: 0;
+  font-size: clamp(24px, 4vw, 48px);
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.statement em {
+  font-style: italic;
+}
+
+.symbol {
+  color: var(--pink);
+  font-style: normal;
+}
+
+.subscribe-form {
+  width: 100%;
+}
+
+.subscribe-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px;
+  border-bottom: 1px solid var(--pink);
+}
+
+.subscribe-form input[type="email"] {
+  min-width: 0;
+  min-height: 48px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 18px;
+  padding: 10px 0;
+}
+
+.subscribe-form input[type="email"]:focus {
+  outline: 0;
+}
+
+.subscribe-form input[type="email"]::placeholder {
+  color: var(--muted);
+}
+
+.subscribe-form button {
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--pink);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.subscribe-form button:hover,
+.subscribe-form button:focus-visible {
+  color: var(--blue);
+}
+
+.subscribe-form button:disabled {
+  color: var(--muted);
+  cursor: wait;
+}
+
+.form-status {
+  min-height: 24px;
+  margin: 12px 0 0;
+  color: var(--pink);
+  font-size: 14px;
+}
+
+.form-status.is-error {
+  color: var(--pink);
+}
+
+.click-mood {
+  position: fixed;
+  z-index: 20;
+  display: inline-flex;
+  gap: 0.12em;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  font-size: clamp(26px, 5vw, 54px);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.click-mood span {
+  color: var(--pink);
+  opacity: 0;
+  transform: translateY(10px) scale(0.72) rotate(-5deg);
+  animation: click-mood-rise 780ms ease-out var(--delay) forwards;
+}
+
+.click-mood .is-sad,
+.click-mood .is-happy:nth-child(3),
+.click-mood .is-happy:nth-child(6) {
+  color: var(--blue);
+}
+
+@keyframes click-mood-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.72) rotate(-5deg);
+  }
+
+  35% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.02) rotate(3deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-34px) scale(1) rotate(0deg);
+  }
+}
+
+.hidden-frame {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  clip: rect(0 0 0 0);
+  overflow: hidden;
+}
+
+.team,
+.english,
+.archive p:last-child,
+.site-footer {
+  font-size: clamp(17px, 2vw, 22px);
+}
+
+.team {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.team a {
+  color: var(--pink);
+  text-decoration: none;
+}
+
+.team a:hover,
+.team a:focus-visible {
+  color: var(--blue);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.english {
+  max-width: 720px;
+}
+
+.english p:last-child,
+.archive p:last-child {
+  margin-bottom: 0;
+}
+
+.archive p:last-child,
+.archive a {
+  color: var(--muted);
+}
+
+.issue-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8em;
+}
+
+.archive a {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.archive a:hover,
+.archive a:focus-visible {
+  color: var(--pink);
+}
+
+.back-cover {
+  padding: clamp(34px, 7vw, 82px) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.back-cover img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.site-footer {
+  width: min(1120px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 26px 0 34px;
+  color: var(--muted);
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .subscribe,
+  .details,
+  .archive {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-title {
+    margin-top: 16px;
+  }
+
+  .statement p {
+    font-size: clamp(26px, 9vw, 42px);
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .subscribe-form button {
+    justify-content: flex-start;
+    text-align: left;
+    padding: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .click-mood span {
+    animation-duration: 1ms;
+  }
+}
