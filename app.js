@@ -1,4 +1,4 @@
-const APPS_SCRIPT_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzcuKMhsLB19-O3yHaZ8aVbJ2AHFKB8fVBMZoMSnqMH0U1UEmF6J_EkcKFq0l_BTqzrZA/exec";
 
 const form = document.querySelector("#subscribeForm");
 const statusText = document.querySelector("#formStatus");

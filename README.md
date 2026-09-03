@@ -6,13 +6,19 @@
 
 ## 你只需要填的地方
 
-打開 `app.js`，把第一行換成你的 Google Apps Script Web App URL：
+`app.js` 第一行要放 Google Apps Script Web App URL：
 
 ```js
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/你的部署ID/exec";
 ```
 
-其他檔案可以先不用改。
+如果 Apps Script 是從 Google Sheet 的「擴充功能」打開，其他檔案可以先不用改。
+
+如果 Apps Script 是另外從 `script.google.com` 開的，打開 `google-apps-script/Code.gs`，把第一行換成你的 Google Sheet ID：
+
+```js
+const SPREADSHEET_ID = "你的 Google Sheet ID";
+```
 
 ## 檔案內容
 
@@ -31,14 +37,15 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/你的部署ID/exec"
 ## Google Sheet 與 Apps Script 設定
 
 1. 新增一份 Google Sheet。
-2. 到「擴充功能」打開 Apps Script。
-3. 把 `google-apps-script/Code.gs` 的內容貼進去。
-4. 儲存專案。
-5. 部署成 Web App。
-6. 執行身分選「我」。
-7. 存取權限選「任何人」。
-8. 複製部署後產生的 Web App URL。
-9. 回到 `app.js`，貼到 `APPS_SCRIPT_URL`。
+2. 如果可以，到「擴充功能」打開 Apps Script。
+3. 如果無法從「擴充功能」打開，就直接到 `https://script.google.com/` 新增專案，並把 Google Sheet ID 填進 `SPREADSHEET_ID`。
+4. 把 `google-apps-script/Code.gs` 的內容貼進去。
+5. 儲存專案。
+6. 部署成 Web App。
+7. 執行身分選「我」。
+8. 存取權限選「任何人」。
+9. 複製部署後產生的 Web App URL。
+10. 回到 `app.js`，貼到 `APPS_SCRIPT_URL`。
 
 第一次有人訂閱時，Apps Script 會在 Sheet 裡自動建立 `subscribers` 工作表和欄位。
 

@@ -1,3 +1,4 @@
+const SPREADSHEET_ID = "PASTE_YOUR_GOOGLE_SHEET_ID_HERE";
 const SHEET_NAME = "subscribers";
 const RESPONSE_SOURCE = "patch-paper-subscription";
 
@@ -195,7 +196,7 @@ function getActiveSubscribers() {
 }
 
 function getSheet_() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheet = getSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
 
   if (!sheet) {
@@ -222,6 +223,25 @@ function getSheet_() {
   }
 
   return sheet;
+}
+
+function getSpreadsheet_() {
+  const spreadsheetId = String(SPREADSHEET_ID || "").trim();
+
+  if (
+    spreadsheetId &&
+    spreadsheetId !== "PASTE_YOUR_GOOGLE_SHEET_ID_HERE"
+  ) {
+    return SpreadsheetApp.openById(spreadsheetId);
+  }
+
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!spreadsheet) {
+    throw new Error("Please set SPREADSHEET_ID to your Google Sheet ID.");
+  }
+
+  return spreadsheet;
 }
 
 function normalizeEmail_(email) {
