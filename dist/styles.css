@@ -47,7 +47,34 @@ a {
 
 .site-header nav {
   display: flex;
+  align-items: center;
   gap: 18px;
+}
+
+.site-header a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+.site-header .nav-button {
+  min-width: 68px;
+  justify-content: center;
+  gap: 0.35em;
+  padding: 3px 13px 4px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: var(--blue);
+}
+
+.site-header .nav-button::before {
+  content: "☛";
+  color: var(--pink);
+}
+
+.site-header .nav-button:hover,
+.site-header .nav-button:focus-visible {
+  color: var(--pink);
 }
 
 .page {
@@ -87,6 +114,12 @@ a {
   line-height: 1;
   letter-spacing: 0;
   white-space: nowrap;
+}
+
+.hero-label {
+  margin: 12px 0 0;
+  font-size: clamp(17px, 3vw, 34px);
+  line-height: 1.15;
 }
 
 .label-blue {
