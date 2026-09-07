@@ -46,6 +46,11 @@ a {
   text-transform: uppercase;
 }
 
+.site-header nav {
+  display: flex;
+  gap: 18px;
+}
+
 .page {
   width: min(1120px, calc(100% - 36px));
   margin: 0 auto;
@@ -157,7 +162,8 @@ h2 {
 .statement,
 .subscribe,
 .details,
-.archive {
+.archive,
+.articles {
   display: grid;
   grid-template-columns: 0.42fr 1fr;
   gap: clamp(22px, 5vw, 68px);
@@ -340,25 +346,75 @@ h2 {
 }
 
 .archive p:last-child,
-.archive a {
+.archive a,
+.articles a {
   color: var(--muted);
 }
 
-.issue-links {
+.issue-links,
+.article-links {
   display: flex;
   flex-wrap: wrap;
   gap: 0.8em;
 }
 
-.archive a {
+.archive a,
+.articles a {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18em;
 }
 
 .archive a:hover,
-.archive a:focus-visible {
+.archive a:focus-visible,
+.articles a:hover,
+.articles a:focus-visible {
   color: var(--pink);
+}
+
+.article-links a {
+  display: inline-flex;
+  gap: 0.65em;
+  align-items: baseline;
+  font-size: clamp(24px, 4vw, 48px);
+  line-height: 1.1;
+}
+
+.article-links strong {
+  color: var(--blue);
+  font-weight: 400;
+}
+
+.article-page {
+  padding-top: clamp(42px, 8vw, 96px);
+}
+
+.article {
+  max-width: 820px;
+  padding: 0 0 clamp(46px, 8vw, 96px);
+}
+
+.article-kicker {
+  color: var(--pink);
+  font-size: clamp(18px, 2vw, 24px);
+}
+
+.article-title {
+  margin: 0 0 clamp(28px, 5vw, 58px);
+  color: var(--blue);
+  font-size: clamp(44px, 10vw, 116px);
+  font-weight: 400;
+  line-height: 0.9;
+}
+
+.article-body {
+  color: var(--blue);
+  font-size: clamp(22px, 3vw, 36px);
+  line-height: 1.25;
+}
+
+.article-body p {
+  margin-bottom: 1em;
 }
 
 .back-cover {
@@ -386,7 +442,8 @@ h2 {
 @media (max-width: 760px) {
   .subscribe,
   .details,
-  .archive {
+  .archive,
+  .articles {
     grid-template-columns: 1fr;
   }
 

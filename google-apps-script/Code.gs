@@ -1,6 +1,10 @@
 const SPREADSHEET_ID = "PASTE_YOUR_GOOGLE_SHEET_ID_HERE";
 const SHEET_NAME = "subscribers";
 const RESPONSE_SOURCE = "patch-paper-subscription";
+const WELCOME_SENDER_NAME = "PATCH PAPER";
+const WELCOME_SUBJECT = "歡迎訂閱  黏  合  電  子  報 ";
+const WELCOME_TEXT = "hi 你已經訂閱囉♫♪♩♪♩";
+const ARTICLES_URL = "https://patch-paper.patchpaper-tw.workers.dev/issues/";
 
 function doPost(e) {
   const params = (e && e.parameter) || {};
@@ -80,6 +84,7 @@ function subscribe_(params) {
 
         if (currentStatus === "active") {
           sheet.getRange(rowNumber, 5).setValue(now);
+
           return {
             ok: true,
             status: "duplicate",
@@ -101,6 +106,8 @@ function subscribe_(params) {
           ],
         ]);
 
+        sendWelcomeEmail_(email, token);
+
         return {
           ok: true,
           status: "subscribed",
@@ -121,6 +128,8 @@ function subscribe_(params) {
       "",
     ]);
 
+    sendWelcomeEmail_(email, token);
+
     return {
       ok: true,
       status: "subscribed",
@@ -128,6 +137,37 @@ function subscribe_(params) {
     };
   } finally {
     lock.releaseLock();
+  }
+}
+
+function sendWelcomeEmail_(email, token) {
+  const unsubscribeUrl = buildUnsubscribeUrl_(token);
+  const body =
+    WELCOME_TEXT +
+    "\n\n文章頁：" +
+    ARTICLES_URL +
+    "\n\n退訂：" +
+    unsubscribeUrl;
+  const htmlBody =
+    '<div style="font-family:Helvetica,Arial,sans-serif;color:#174ea6;font-size:18px;line-height:1.7">' +
+    "<p>" +
+    escapeHtml_(WELCOME_TEXT) +
+    "</p>" +
+    '<p><a style="color:#d96f9a" href="' +
+    escapeHtml_(ARTICLES_URL) +
+    '">文章頁</a></p>' +
+    '<p><a style="color:#d96f9a" href="' +
+    escapeHtml_(unsubscribeUrl) +
+    '">退訂</a></p>' +
+    "</div>";
+
+  try {
+    GmailApp.sendEmail(email, WELCOME_SUBJECT, body, {
+      name: WELCOME_SENDER_NAME,
+      htmlBody: htmlBody,
+    });
+  } catch (error) {
+    console.error("Welcome email failed: " + (error.message || error));
   }
 }
 

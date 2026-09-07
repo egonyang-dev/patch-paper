@@ -28,11 +28,13 @@ const SPREADSHEET_ID = "你的 Google Sheet ID";
 
 `app.js` 負責把訂閱表單送到 Google Apps Script。
 
-`google-apps-script/Code.gs` 是要貼到 Google Apps Script 的後端程式。它會新增訂閱、避免重複 Email，並替每筆訂閱建立退訂 token。
+`google-apps-script/Code.gs` 是要貼到 Google Apps Script 的後端程式。它會新增訂閱、避免重複 Email，替每筆訂閱建立退訂 token，並寄出歡迎信。
 
 `assets/patch-paper-wordmark.jpg` 是首頁標準字圖。
 
 `assets/patch-paper-back-cover.jpg` 是封底圖。
+
+`issues/` 是文章頁。`issues/index.html` 是文章列表，`issues/03.html` 是 Issue 03 的文章頁模板。
 
 ## Google Sheet 與 Apps Script 設定
 
@@ -97,3 +99,15 @@ patch-paper
 ```
 
 把 `unsubscribeUrl` 放進電子報底部，讀者點開後就會退訂。
+
+## 歡迎信
+
+有人第一次訂閱時，Apps Script 會寄出：
+
+```text
+寄件人名稱：PATCH PAPER
+信件標題：歡迎訂閱  黏  合  電  子  報
+信件內容：hi 你已經訂閱囉♫♪♩♪♩
+```
+
+信裡也會附上文章頁和退訂連結。
