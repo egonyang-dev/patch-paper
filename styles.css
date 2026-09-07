@@ -43,7 +43,6 @@ a {
   color: var(--pink);
   font-size: 13px;
   letter-spacing: 0;
-  text-transform: uppercase;
 }
 
 .site-header nav {
@@ -110,7 +109,8 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ticker-track {
+  .ticker-track,
+  .article-marquee-track {
     animation: none;
   }
 }
@@ -356,6 +356,28 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 0.8em;
+}
+
+.article-marquee {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 0 22px;
+  overflow: hidden;
+  border-block: 1px solid var(--line);
+}
+
+.article-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 18s linear infinite;
+}
+
+.article-marquee-track span {
+  flex: 0 0 auto;
+  padding-right: 1.2em;
+  font-size: clamp(28px, 5vw, 64px);
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .archive a,
