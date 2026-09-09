@@ -5,6 +5,13 @@ const WELCOME_SENDER_NAME = "PATCH PAPER";
 const WELCOME_SUBJECT = "歡迎訂閱  黏  合  電  子  報 ";
 const WELCOME_TEXT = "hi 你已經訂閱囉♫♪♩♪♩";
 const ARTICLES_URL = "https://patch-paper.patchpaper-tw.workers.dev/issues/";
+const CURRENT_ISSUE_SUBJECT = "Issue 03｜黏  合  電  子  報";
+const CURRENT_ISSUE_TITLE = "Issue 03 preparing.";
+const CURRENT_ISSUE_URL = "https://patch-paper.patchpaper-tw.workers.dev/issues/03.html";
+const CURRENT_ISSUE_TEXT = [
+  "在這裡貼上這一期電子報正文。",
+  "可以一段一行。確認後先執行 sendCurrentIssueToMe，再執行 sendCurrentIssueToSubscribers。",
+].join("\n\n");
 
 function doPost(e) {
   const params = (e && e.parameter) || {};
@@ -248,6 +255,59 @@ function sendTestWelcomeEmail() {
   return "Test welcome email sent to " + email;
 }
 
+function sendCurrentIssueToMe() {
+  const email = Session.getEffectiveUser().getEmail();
+
+  if (!email) {
+    throw new Error("Google 無法讀取目前帳號 Email。請改用自己的 Email 先訂閱，再測試寄送。");
+  }
+
+  sendNewsletterEmail_(email, "");
+  return "Preview newsletter sent to " + email;
+}
+
+function sendCurrentIssueToSubscribers() {
+  const subscribers = getActiveSubscribers();
+
+  if (subscribers.length === 0) {
+    return "No active subscribers.";
+  }
+
+  subscribers.forEach(function (subscriber) {
+    sendNewsletterEmail_(subscriber.email, subscriber.token);
+  });
+
+  return "Newsletter sent to " + subscribers.length + " subscribers.";
+}
+
+function sendNewsletterEmail_(email, token) {
+  const unsubscribeUrl = token ? buildUnsubscribeUrl_(token) : "";
+  const body =
+    CURRENT_ISSUE_TEXT +
+    "\n\n閱讀文章：" +
+    CURRENT_ISSUE_URL +
+    "\n\n退訂：" +
+    (unsubscribeUrl || "預覽信不適用");
+  const htmlBody =
+    '<div style="font-family:Helvetica,Arial,sans-serif;color:#174ea6;font-size:18px;line-height:1.7">' +
+    '<p style="color:#d96f9a">' +
+    escapeHtml_(CURRENT_ISSUE_TITLE) +
+    "</p>" +
+    htmlParagraphs_(CURRENT_ISSUE_TEXT) +
+    '<p><a style="color:#d96f9a" href="' +
+    escapeHtml_(CURRENT_ISSUE_URL) +
+    '">閱讀文章</a></p>' +
+    (unsubscribeUrl
+      ? '<p><a style="color:#d96f9a" href="' + escapeHtml_(unsubscribeUrl) + '">退訂</a></p>'
+      : '<p style="color:#d96f9a">退訂：預覽信不適用</p>') +
+    "</div>";
+
+  GmailApp.sendEmail(email, CURRENT_ISSUE_SUBJECT, body, {
+    name: WELCOME_SENDER_NAME,
+    htmlBody: htmlBody,
+  });
+}
+
 function getSheet_() {
   const spreadsheet = getSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
@@ -348,4 +408,13 @@ function escapeHtml_(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function htmlParagraphs_(value) {
+  return String(value || "")
+    .split(/\n{2,}/)
+    .map(function (paragraph) {
+      return "<p>" + escapeHtml_(paragraph).replace(/\n/g, "<br>") + "</p>";
+    })
+    .join("");
 }

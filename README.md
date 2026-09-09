@@ -36,6 +36,27 @@ const SPREADSHEET_ID = "你的 Google Sheet ID";
 
 `issues/` 是文章頁。`issues/index.html` 是文章列表，`issues/03.html` 是 Issue 03 的文章頁模板。
 
+## 更新文章
+
+文章放在 `issues/03.html`。
+
+要更新 Issue 03 時，改這一段：
+
+```html
+<div class="article-body">
+  <p>文章會放在這裡。</p>
+  <p>等正文來了，再慢慢黏上。</p>
+</div>
+```
+
+一段文字包一個 `<p>`。改完後把同一份檔案同步到 `dist/issues/03.html`，再推到 GitHub。Cloudflare 會自動更新網站。
+
+文章網址是：
+
+```text
+https://patch-paper.patchpaper-tw.workers.dev/issues/03.html
+```
+
 ## Google Sheet 與 Apps Script 設定
 
 1. 新增一份 Google Sheet。
@@ -111,3 +132,31 @@ patch-paper
 ```
 
 信裡也會附上文章頁和退訂連結。
+
+## 寄出正式電子報
+
+正式電子報內容放在 Apps Script 的 `CURRENT_ISSUE_TEXT`。
+
+```js
+const CURRENT_ISSUE_SUBJECT = "Issue 03｜黏  合  電  子  報";
+const CURRENT_ISSUE_TITLE = "Issue 03 preparing.";
+const CURRENT_ISSUE_URL = "https://patch-paper.patchpaper-tw.workers.dev/issues/03.html";
+const CURRENT_ISSUE_TEXT = [
+  "在這裡貼上這一期電子報正文。",
+  "可以一段一行。確認後先執行 sendCurrentIssueToMe，再執行 sendCurrentIssueToSubscribers。",
+].join("\n\n");
+```
+
+寄出前先在 Apps Script 執行：
+
+```text
+sendCurrentIssueToMe
+```
+
+確認自己收到、格式沒問題，再執行：
+
+```text
+sendCurrentIssueToSubscribers
+```
+
+它會寄給 Google Sheet 裡 `status` 是 `active` 的訂閱者，每封信底部都有自己的退訂連結。
