@@ -152,6 +152,7 @@ function renderIssueArticle(payload) {
   }
 
   const issue = payload.issue;
+  issueArticle.classList.remove("is-loading");
   currentIssue = issue;
   if (issue.slug) {
     issueArticle.dataset.issueSlug = issue.slug;
@@ -185,6 +186,7 @@ function renderMissingIssue() {
     return;
   }
 
+  issueArticle.classList.remove("is-loading");
   currentIssue = null;
   const kicker = issueArticle.querySelector("[data-issue-kicker]");
   const title = issueArticle.querySelector("[data-issue-title]");
@@ -391,6 +393,10 @@ function likeCurrentIssue() {
 
 function renderIssueList(payload) {
   if (!payload || !payload.ok || !Array.isArray(payload.issues) || !payload.issues.length) {
+    const empty = document.createElement("p");
+    empty.className = "article-empty";
+    empty.textContent = "文章整理中。";
+    issueList?.replaceChildren(empty);
     return;
   }
 
