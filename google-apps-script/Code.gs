@@ -1,6 +1,7 @@
 const SPREADSHEET_ID = "PASTE_YOUR_GOOGLE_SHEET_ID_HERE";
 const SHEET_NAME = "subscribers";
 const RESPONSE_SOURCE = "patch-paper-subscription";
+const ADMIN_PASSWORD = "PASTE_ADMIN_PASSWORD_HERE";
 const WELCOME_SENDER_NAME = "PATCH PAPER";
 const WELCOME_SUBJECT = "歡迎訂閱  黏  合  電  子  報 ";
 const WELCOME_TEXT = "hi 你已經訂閱囉♫♪♩♪♩";
@@ -43,6 +44,11 @@ function doPost(e) {
 
     if (action === "unsubscribe") {
       const result = unsubscribe_(params.token);
+      return iframeResponse_(result);
+    }
+
+    if (action === "saveissue") {
+      const result = saveIssue_(params);
       return iframeResponse_(result);
     }
 
@@ -266,6 +272,80 @@ function getActiveSubscribers() {
   return subscribers;
 }
 
+function saveIssue_(params) {
+  requireAdmin_(params.password);
+
+  const issueNumber = String(params.issue || "").trim() || "03";
+  const slug = String(params.slug || issueNumber).trim();
+  const title = String(params.title || "").trim() || "Issue " + issueNumber;
+  const subject = String(params.subject || "").trim() || title + "｜黏  合  電  子  報";
+  const body = String(params.body || "").trim();
+  const status = String(params.status || "current").trim().toLowerCase();
+
+  if (!slug) {
+    throw new Error("請填 slug。");
+  }
+
+  if (!body) {
+    throw new Error("請貼上文章內容。");
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+
+  try {
+    const sheet = getIssuesSheet_();
+    const rows = sheet.getDataRange().getValues();
+    let rowNumber = 0;
+
+    for (let i = 1; i < rows.length; i += 1) {
+      const rowIssue = String(rows[i][0] || "").trim();
+      const rowSlug = String(rows[i][2] || "").trim();
+
+      if (rowSlug === slug || rowIssue === issueNumber) {
+        rowNumber = i + 1;
+        break;
+      }
+    }
+
+    if (status === "current") {
+      for (let i = 1; i < rows.length; i += 1) {
+        const targetRow = i + 1;
+
+        if (targetRow !== rowNumber && String(rows[i][5] || "").trim().toLowerCase() === "current") {
+          sheet.getRange(targetRow, 6).setValue("published");
+        }
+      }
+    }
+
+    const values = [
+      issueNumber,
+      title,
+      slug,
+      subject,
+      body,
+      status,
+      new Date(),
+      "",
+    ];
+
+    if (rowNumber) {
+      sheet.getRange(rowNumber, 1, 1, ISSUE_HEADERS.length).setValues([values]);
+    } else {
+      sheet.appendRow(values);
+    }
+
+    return {
+      ok: true,
+      status: "saved",
+      message: "文章已更新。",
+      slug: slug,
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function setupPatchPaperManager() {
   getSheet_();
   getIssuesSheet_();
@@ -420,6 +500,8 @@ function issueResponse_(params) {
           issue: issue.issue,
           title: issue.title,
           slug: issue.slug,
+          subject: issue.subject,
+          status: issue.status,
           body: issue.body,
           url: issue.url,
         },
@@ -441,6 +523,25 @@ function issueResponse_(params) {
 
   return ContentService.createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function requireAdmin_(password) {
+  const storedPassword =
+    PropertiesService.getScriptProperties().getProperty("PATCH_PAPER_ADMIN_PASSWORD") ||
+    ADMIN_PASSWORD;
+  const cleanStoredPassword = String(storedPassword || "").trim();
+  const cleanPassword = String(password || "").trim();
+
+  if (
+    !cleanStoredPassword ||
+    cleanStoredPassword === "PASTE_ADMIN_PASSWORD_HERE"
+  ) {
+    throw new Error("請先在 Apps Script 設定管理密碼。");
+  }
+
+  if (cleanPassword !== cleanStoredPassword) {
+    throw new Error("管理密碼錯誤。");
+  }
 }
 
 function markIssueSent_(rowNumber) {

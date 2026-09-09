@@ -5,6 +5,10 @@ const statusText = document.querySelector("#formStatus");
 const submitButton = form?.querySelector("button[type='submit']");
 const clickSymbols = ["☹", "♩", "☺", "♩", "♫", "☻", "♫"];
 const issueArticle = document.querySelector("[data-issue-slug]");
+let currentIssue = null;
+let adminDialog = null;
+let adminStatus = null;
+let adminSaveButton = null;
 
 function setStatus(message, isError = false) {
   statusText.textContent = message;
@@ -81,6 +85,7 @@ function showClickMood(event) {
 }
 
 window.addEventListener("pointerdown", showClickMood, { passive: true });
+window.addEventListener("message", receiveAppsScriptMessage);
 
 function loadIssueArticle() {
   if (!issueArticle || !isConfigured()) {
@@ -117,6 +122,10 @@ function renderIssueArticle(payload) {
   }
 
   const issue = payload.issue;
+  currentIssue = issue;
+  if (issue.slug) {
+    issueArticle.dataset.issueSlug = issue.slug;
+  }
   const kicker = issueArticle.querySelector("[data-issue-kicker]");
   const title = issueArticle.querySelector("[data-issue-title]");
   const body = issueArticle.querySelector("[data-issue-body]");
@@ -127,6 +136,7 @@ function renderIssueArticle(payload) {
 
   if (title && issue.title) {
     title.textContent = issue.title;
+    document.title = `${issue.title} | PATCH PAPER`;
   }
 
   if (body && issue.body) {
@@ -152,3 +162,165 @@ function plainTextToParagraphs(text) {
 }
 
 loadIssueArticle();
+setupIssueAdmin();
+
+function setupIssueAdmin() {
+  if (!issueArticle) {
+    return;
+  }
+
+  const iframeName = "patchPaperAdminFrame";
+  const frame = document.createElement("iframe");
+  frame.className = "hidden-frame";
+  frame.name = iframeName;
+  frame.title = "文章更新狀態";
+  document.body.append(frame);
+
+  const button = document.createElement("button");
+  button.className = "admin-edit-button";
+  button.type = "button";
+  button.setAttribute("aria-label", "編輯文章");
+  button.textContent = "✎";
+  document.body.append(button);
+
+  adminDialog = document.createElement("dialog");
+  adminDialog.className = "admin-dialog";
+  adminDialog.innerHTML = `
+    <form class="admin-form" method="post" target="${iframeName}">
+      <input type="hidden" name="action" value="saveIssue" />
+      <input type="hidden" name="returnMode" value="iframe" />
+
+      <div class="admin-head">
+        <p>PATCH PAPER editor</p>
+        <button type="button" class="admin-close" aria-label="關閉">×</button>
+      </div>
+
+      <label>
+        密碼
+        <input name="password" type="password" autocomplete="current-password" required />
+      </label>
+
+      <div class="admin-grid">
+        <label>
+          Issue
+          <input name="issue" type="text" value="03" required />
+        </label>
+        <label>
+          Slug
+          <input name="slug" type="text" value="03" required />
+        </label>
+      </div>
+
+      <label>
+        文章標題
+        <input name="title" type="text" required />
+      </label>
+
+      <label>
+        信件標題
+        <input name="subject" type="text" />
+      </label>
+
+      <label>
+        文章內容
+        <textarea name="body" rows="13" required></textarea>
+      </label>
+
+      <input name="status" type="hidden" value="current" />
+
+      <p class="admin-status" role="status" aria-live="polite"></p>
+
+      <div class="admin-actions">
+        <button type="button" class="admin-cancel">取消</button>
+        <button type="submit" class="admin-save">更新文章</button>
+      </div>
+    </form>
+  `;
+  document.body.append(adminDialog);
+
+  const adminForm = adminDialog.querySelector(".admin-form");
+  adminStatus = adminDialog.querySelector(".admin-status");
+  adminSaveButton = adminDialog.querySelector(".admin-save");
+
+  button.addEventListener("click", () => {
+    fillAdminForm(adminForm);
+    adminStatus.textContent = "";
+    adminDialog.showModal();
+    adminForm.elements.password.focus();
+  });
+
+  adminDialog.querySelector(".admin-close").addEventListener("click", () => {
+    adminDialog.close();
+  });
+
+  adminDialog.querySelector(".admin-cancel").addEventListener("click", () => {
+    adminDialog.close();
+  });
+
+  adminForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    if (!isConfigured()) {
+      adminStatus.textContent = "請先填入 Apps Script URL。";
+      return;
+    }
+
+    adminForm.action = APPS_SCRIPT_URL;
+    adminSaveButton.disabled = true;
+    adminStatus.textContent = "更新中。";
+    HTMLFormElement.prototype.submit.call(adminForm);
+  });
+}
+
+function fillAdminForm(adminForm) {
+  const params = new URLSearchParams(window.location.search);
+  const slug = issueArticle.dataset.issueSlug || params.get("slug") || "03";
+  const issue = currentIssue || {};
+
+  adminForm.elements.issue.value = issue.issue || slug || "03";
+  adminForm.elements.slug.value = issue.slug || slug || "03";
+  adminForm.elements.title.value = issue.title || "";
+  adminForm.elements.subject.value = issue.subject || "";
+  adminForm.elements.body.value = issue.body || "";
+}
+
+function receiveAppsScriptMessage(event) {
+  const payload = event.data || {};
+
+  if (payload.source !== "patch-paper-subscription" || !adminDialog?.open) {
+    return;
+  }
+
+  if (adminSaveButton) {
+    adminSaveButton.disabled = false;
+  }
+
+  if (!adminStatus) {
+    return;
+  }
+
+  if (!payload.ok) {
+    adminStatus.textContent = payload.message || "更新失敗。";
+    return;
+  }
+
+  if (payload.status === "saved") {
+    adminStatus.textContent = "已更新。";
+    const adminForm = adminDialog.querySelector(".admin-form");
+    currentIssue = {
+      issue: adminForm.elements.issue.value,
+      slug: adminForm.elements.slug.value,
+      title: adminForm.elements.title.value,
+      subject: adminForm.elements.subject.value,
+      status: "current",
+      body: adminForm.elements.body.value,
+    };
+    renderIssueArticle({ ok: true, issue: currentIssue });
+    if (currentIssue.slug) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("slug", currentIssue.slug);
+      window.history.replaceState({}, "", url);
+    }
+    window.setTimeout(() => adminDialog.close(), 600);
+  }
+}

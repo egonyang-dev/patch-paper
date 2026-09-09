@@ -20,6 +20,12 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/你的部署ID/exec"
 const SPREADSHEET_ID = "你的 Google Sheet ID";
 ```
 
+右下角鉛筆編輯文章需要一組管理密碼。打開 `google-apps-script/Code.gs`，把第二行換成你自己的密碼：
+
+```js
+const ADMIN_PASSWORD = "你的管理密碼";
+```
+
 ## 檔案內容
 
 `index.html` 是網站首頁，包含首頁、簡介、歷期預留區塊和訂閱表單。
@@ -35,6 +41,8 @@ const SPREADSHEET_ID = "你的 Google Sheet ID";
 `assets/patch-paper-back-cover.jpg` 是封底圖。
 
 `issues/` 是文章頁。`issues/index.html` 是文章列表，`issues/read.html` 是從 Google Sheet 讀文章的通用頁。
+
+文章頁右下角有鉛筆按鈕。輸入管理密碼後，可以直接改 issue、slug、標題、信件標題、文章內容。換行會保留，送出後會寫回 Google Sheet 的 `issues` 工作表。
 
 ## 更新文章
 
@@ -75,6 +83,8 @@ status：current
 ```text
 https://patch-paper.patchpaper-tw.workers.dev/issues/read.html?slug=03
 ```
+
+也可以直接到文章頁右下角按鉛筆，把新文章貼進去。這個做法適合日常更新。
 
 ## Google Sheet 與 Apps Script 設定
 
