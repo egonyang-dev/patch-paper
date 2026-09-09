@@ -164,7 +164,7 @@ em {
   margin-top: 0;
 }
 
-h1 {
+h1:not(.visible-title):not(.article-title) {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -172,6 +172,14 @@ h1 {
   clip: rect(0 0 0 0);
   margin: 0;
   white-space: nowrap;
+}
+
+.visible-title {
+  margin: 0 0 clamp(26px, 6vw, 72px);
+  color: var(--blue);
+  font-size: clamp(42px, 8vw, 96px);
+  font-weight: 400;
+  line-height: 0.95;
 }
 
 .wordmark {
@@ -385,8 +393,7 @@ h2 {
   color: var(--muted);
 }
 
-.issue-links,
-.article-links {
+.issue-links {
   display: flex;
   flex-wrap: wrap;
   gap: 0.8em;
@@ -416,7 +423,8 @@ h2 {
 }
 
 .archive a,
-.articles a {
+.articles a,
+.article-index a {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18em;
@@ -425,11 +433,13 @@ h2 {
 .archive a:hover,
 .archive a:focus-visible,
 .articles a:hover,
-.articles a:focus-visible {
+.articles a:focus-visible,
+.article-index a:hover,
+.article-index a:focus-visible {
   color: var(--pink);
 }
 
-.article-links a {
+.articles-entry {
   display: inline-flex;
   flex-direction: column;
   gap: 0.2em;
@@ -438,26 +448,56 @@ h2 {
   line-height: 1.1;
 }
 
-.article-links img {
-  display: block;
-  width: min(100%, 260px);
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  margin-bottom: 0.25em;
-  border: 1px solid var(--line);
-}
-
-.article-links span,
-.article-links em {
+.articles-entry span,
+.articles-entry em {
   color: var(--pink);
   font-size: clamp(14px, 1.6vw, 18px);
   font-style: normal;
   line-height: 1.2;
 }
 
-.article-links strong {
+.articles-entry strong {
   color: var(--blue);
   font-weight: 400;
+}
+
+.article-index {
+  padding: clamp(42px, 8vw, 96px) 0;
+}
+
+.article-rows {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.article-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.45fr);
+  gap: clamp(18px, 4vw, 64px);
+  align-items: baseline;
+  padding: clamp(18px, 4vw, 34px) 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.article-row strong {
+  font-size: clamp(24px, 4.5vw, 58px);
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.article-row-meta,
+.article-row em {
+  color: var(--pink);
+  font-size: clamp(14px, 1.7vw, 18px);
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.article-row em {
+  justify-self: end;
 }
 
 .article-page {
@@ -475,6 +515,12 @@ h2 {
 }
 
 .article-title {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
   margin: 0 0 clamp(28px, 5vw, 58px);
   color: var(--blue);
   font-size: clamp(44px, 10vw, 116px);
@@ -508,28 +554,76 @@ h2 {
   font-size: clamp(18px, 2vw, 24px);
 }
 
-.admin-edit-button {
-  position: fixed;
-  right: clamp(16px, 3vw, 32px);
-  bottom: clamp(16px, 3vw, 32px);
-  z-index: 15;
-  width: 54px;
-  height: 54px;
-  border: 1px solid var(--pink);
-  border-radius: 50%;
-  background: var(--background);
+.article-author {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55em 1em;
+  align-items: baseline;
+  margin-top: clamp(32px, 6vw, 72px);
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--pink);
+  font-size: clamp(16px, 2vw, 22px);
+}
+
+.article-author .eyebrow {
+  flex-basis: 100%;
+  margin-bottom: 0;
+}
+
+.article-author-name {
+  margin: 0;
   color: var(--blue);
+}
+
+.article-author a {
+  color: var(--pink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.article-like-button {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--pink);
   font: inherit;
-  font-size: 28px;
+  font-size: clamp(28px, 5vw, 52px);
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(217, 111, 154, 0.18);
+}
+
+.article-like-button:hover,
+.article-like-button:focus-visible {
+  color: var(--blue);
+  outline: 0;
+}
+
+.article-like-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.admin-edit-button {
+  display: block;
+  width: fit-content;
+  margin: clamp(12px, 4vw, 42px) 0 clamp(52px, 9vw, 104px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font: inherit;
+  font-size: clamp(28px, 5vw, 52px);
+  line-height: 1;
+  cursor: pointer;
 }
 
 .admin-edit-button:hover,
 .admin-edit-button:focus-visible {
-  background: var(--pink);
-  color: var(--background);
+  color: var(--pink);
   outline: 0;
 }
 
@@ -723,6 +817,15 @@ h2 {
 
   .admin-grid {
     flex-direction: column;
+  }
+
+  .article-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .article-row em {
+    justify-self: start;
   }
 
   .admin-actions {

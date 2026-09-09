@@ -19,6 +19,11 @@ const ISSUE_HEADERS = [
   "sentAt",
   "imageUrl",
   "tags",
+  "author",
+  "authorIg",
+  "authorPortfolio",
+  "authorEmail",
+  "likes",
 ];
 
 function onOpen() {
@@ -84,6 +89,10 @@ function doGet(e) {
 
   if (action === "issues") {
     return issuesResponse_(params);
+  }
+
+  if (action === "like") {
+    return likeIssueResponse_(params);
   }
 
   if (action === "unsubscribe") {
@@ -294,7 +303,12 @@ function saveIssue_(params) {
   const body = String(params.body || "").trim();
   const status = String(params.status || "current").trim().toLowerCase();
   const tags = normalizeTags_(params.tags);
-  const imageUrl = saveIssueImage_(params) || String(params.imageUrl || "").trim();
+  const uploadedImageUrl = saveIssueImage_(params);
+  const submittedImageUrl = String(params.imageUrl || "").trim();
+  const author = String(params.author || "").trim();
+  const authorIg = String(params.authorIg || "").trim();
+  const authorPortfolio = String(params.authorPortfolio || "").trim();
+  const authorEmail = normalizeEmail_(params.authorEmail);
   const shouldSend = String(params.sendNewsletter || "").toLowerCase() === "yes";
 
   if (!slug) {
@@ -312,6 +326,7 @@ function saveIssue_(params) {
     const sheet = getIssuesSheet_();
     const rows = sheet.getDataRange().getValues();
     let rowNumber = 0;
+    let existingRow = [];
 
     for (let i = 1; i < rows.length; i += 1) {
       const rowIssue = String(rows[i][0] || "").trim();
@@ -319,6 +334,7 @@ function saveIssue_(params) {
 
       if (rowSlug === slug || rowIssue === issueNumber) {
         rowNumber = i + 1;
+        existingRow = rows[i];
         break;
       }
     }
@@ -333,6 +349,7 @@ function saveIssue_(params) {
       }
     }
 
+    const imageUrl = uploadedImageUrl || submittedImageUrl || String(existingRow[8] || "").trim();
     const values = [
       issueNumber,
       title,
@@ -340,10 +357,15 @@ function saveIssue_(params) {
       subject,
       body,
       status,
-      new Date(),
-      "",
+      existingRow[6] || new Date(),
+      existingRow[7] || "",
       imageUrl,
       tags,
+      author,
+      authorIg,
+      authorPortfolio,
+      authorEmail,
+      Number(existingRow[14] || 0),
     ];
 
     if (rowNumber) {
@@ -377,6 +399,11 @@ function saveIssue_(params) {
       imageUrl: imageUrl,
       tags: tags,
       sentCount: sentCount,
+      author: author,
+      authorIg: authorIg,
+      authorPortfolio: authorPortfolio,
+      authorEmail: authorEmail,
+      likes: Number(existingRow[14] || 0),
     };
   } finally {
     lock.releaseLock();
@@ -417,6 +444,66 @@ function deleteIssue_(params) {
     }
 
     throw new Error("找不到這篇文章。");
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function likeIssueResponse_(params) {
+  const callback = String(params.callback || "").trim();
+  const slug = String(params.slug || "").trim();
+  const payload = likeIssue_(slug);
+
+  if (callback) {
+    if (!/^[A-Za-z_$][0-9A-Za-z_$]*(\.[A-Za-z_$][0-9A-Za-z_$]*)*$/.test(callback)) {
+      return ContentService.createTextOutput("Bad callback.")
+        .setMimeType(ContentService.MimeType.TEXT);
+    }
+
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(payload) + ");")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return ContentService.createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function likeIssue_(slug) {
+  if (!slug) {
+    return {
+      ok: false,
+      message: "Missing slug.",
+    };
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+
+  try {
+    const sheet = getIssuesSheet_();
+    const rows = sheet.getDataRange().getValues();
+    const likesColumn = ISSUE_HEADERS.indexOf("likes") + 1;
+
+    for (let i = 1; i < rows.length; i += 1) {
+      const issue = issueFromRow_(rows[i], i + 1);
+
+      if (issue.slug === slug && issue.status !== "draft") {
+        const likes = Number(rows[i][likesColumn - 1] || 0) + 1;
+        sheet.getRange(i + 1, likesColumn).setValue(likes);
+
+        return {
+          ok: true,
+          status: "liked",
+          slug: slug,
+          likes: likes,
+        };
+      }
+    }
+
+    return {
+      ok: false,
+      message: "No issue found.",
+    };
   } finally {
     lock.releaseLock();
   }
@@ -562,6 +649,12 @@ function issueFromRow_(row, rowNumber) {
   const status = String(row[5] || "").trim().toLowerCase();
   const imageUrl = String(row[8] || "").trim();
   const tags = normalizeTags_(row[9]);
+  const author = String(row[10] || "").trim();
+  const authorIg = String(row[11] || "").trim();
+  const authorPortfolio = String(row[12] || "").trim();
+  const authorEmail = normalizeEmail_(row[13]);
+  const likes = Number(row[14] || 0);
+  const publishedAt = row[6] || "";
 
   return {
     rowNumber: rowNumber,
@@ -571,8 +664,15 @@ function issueFromRow_(row, rowNumber) {
     subject: subject,
     body: body,
     status: status,
+    publishedAt: publishedAt,
+    publishedDate: formatDate_(publishedAt),
     imageUrl: imageUrl,
     tags: tags,
+    author: author,
+    authorIg: authorIg,
+    authorPortfolio: authorPortfolio,
+    authorEmail: authorEmail,
+    likes: likes,
     url: ARTICLES_URL + "read.html?slug=" + encodeURIComponent(slug || "03"),
   };
 }
@@ -589,9 +689,16 @@ function issueResponse_(params) {
           slug: issue.slug,
           subject: issue.subject,
           status: issue.status,
+          publishedAt: issue.publishedAt,
+          publishedDate: issue.publishedDate,
           body: issue.body,
           imageUrl: issue.imageUrl,
           tags: issue.tags,
+          author: issue.author,
+          authorIg: issue.authorIg,
+          authorPortfolio: issue.authorPortfolio,
+          authorEmail: issue.authorEmail,
+          likes: issue.likes,
           url: issue.url,
         },
       }
@@ -636,8 +743,10 @@ function issuesResponse_(params) {
       title: issue.title,
       slug: issue.slug,
       status: issue.status,
+      publishedDate: issue.publishedDate,
       imageUrl: issue.imageUrl,
       tags: issue.tags,
+      author: issue.author,
       url: issue.url,
     });
   }
@@ -689,6 +798,18 @@ function markIssueSent_(rowNumber) {
   sheet.getRange(rowNumber, 8).setValue(new Date());
 }
 
+function formatDate_(value) {
+  if (!value) {
+    return "";
+  }
+
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone() || "Asia/Taipei", "yyyy.MM.dd");
+  }
+
+  return String(value || "").trim();
+}
+
 function getIssuesSheet_() {
   const spreadsheet = getSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(ISSUE_SHEET_NAME);
@@ -723,6 +844,11 @@ function getIssuesSheet_() {
       "",
       "",
       "#文字",
+      "",
+      "",
+      "",
+      "",
+      0,
     ]);
   }
 

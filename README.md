@@ -42,7 +42,7 @@ const ADMIN_PASSWORD = "你的管理密碼";
 
 `issues/` 是文章頁。`issues/index.html` 是文章列表，`issues/read.html` 是從 Google Sheet 讀文章的通用頁。
 
-文章頁右下角有鉛筆按鈕。輸入管理密碼後，可以直接改 issue、slug、標題、信件標題、文章內容。換行會保留，送出後會寫回 Google Sheet 的 `issues` 工作表。
+文章頁底部有鉛筆按鈕。輸入管理密碼後，可以直接改 issue、slug、標題、作者資料、信件標題、文章內容。換行會保留，送出後會寫回 Google Sheet 的 `issues` 工作表。
 
 鉛筆編輯器也可以上傳圖片、填 `#分類`，並勾選是否要立刻寄給所有訂閱者。圖片會存到 Google Drive，Google Sheet 只記圖片網址。
 
@@ -69,6 +69,11 @@ publishedAt
 sentAt
 imageUrl
 tags
+author
+authorIg
+authorPortfolio
+authorEmail
+likes
 ```
 
 平常只需要改這幾格：
@@ -82,11 +87,17 @@ body：電子報正文
 status：current
 imageUrl：圖片網址，可留空
 tags：#藝術市場 #散文
+author：作者名稱
+authorIg：作者 IG 連結，可留空
+authorPortfolio：作品集連結，可留空
+authorEmail：合作聯絡信箱，可留空
 ```
 
 `status` 填 `current` 的那一列，會被網站文章頁讀取，也會被寄信功能使用。
 
-文章列表會顯示所有 `status` 不是 `draft` 的文章。讀者可以從「文章」頁點標題進入單篇文章。
+文章列表會顯示所有 `status` 不是 `draft` 的文章。每一行會出現標題、時間、作者和分類。讀者可以從「文章」頁點標題進入單篇文章。
+
+單篇文章底部會顯示作者資料。讀者可以點 IG、作品集或 Email。文章底部也有 `㊝` 喜歡按鈕，數量會存在 `likes` 欄位。
 
 文章網址是：
 
@@ -94,7 +105,7 @@ tags：#藝術市場 #散文
 https://patch-paper.patchpaper-tw.workers.dev/issues/read.html?slug=03
 ```
 
-也可以直接到文章頁右下角按鉛筆，把新文章貼進去。這個做法適合日常更新。如果是五篇文章，建議 `slug` 依序填 `01`、`02`、`03`、`04`、`05`。
+也可以直接到文章頁底部按鉛筆，把新文章貼進去。這個做法適合日常更新。如果是五篇文章，建議 `slug` 依序填 `01`、`02`、`03`、`04`、`05`。
 
 在鉛筆編輯器勾選「更新後立刻寄給所有訂閱者」時，按下更新會同時寄出電子報。沒有勾選時，只會上架到網站。
 

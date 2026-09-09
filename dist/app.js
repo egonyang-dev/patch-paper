@@ -11,6 +11,7 @@ let adminDialog = null;
 let adminStatus = null;
 let adminSaveButton = null;
 let adminDeleteButton = null;
+let likeButton = null;
 
 function setStatus(message, isError = false) {
   statusText.textContent = message;
@@ -160,7 +161,8 @@ function renderIssueArticle(payload) {
   const body = issueArticle.querySelector("[data-issue-body]");
 
   if (kicker) {
-    kicker.textContent = issue.issue ? `Issue ${issue.issue}` : "Issue";
+    const issueLabel = issue.issue ? `Issue ${issue.issue}` : "Issue";
+    kicker.textContent = [issueLabel, issue.tags].filter(Boolean).join("  ");
   }
 
   if (title && issue.title) {
@@ -174,6 +176,8 @@ function renderIssueArticle(payload) {
 
   renderIssueImage(issue);
   renderIssueTags(issue);
+  renderIssueAuthor(issue);
+  renderIssueLike(issue);
 }
 
 function renderMissingIssue() {
@@ -190,6 +194,8 @@ function renderMissingIssue() {
   body && body.replaceChildren();
   renderIssueImage({});
   renderIssueTags({});
+  renderIssueAuthor({});
+  renderIssueLike({});
 }
 
 function plainTextToParagraphs(text) {
@@ -262,6 +268,127 @@ function renderIssueTags(issue) {
   tags.textContent = issue.tags;
 }
 
+function renderIssueAuthor(issue) {
+  if (!issueArticle) {
+    return;
+  }
+
+  let authorBlock = issueArticle.querySelector("[data-issue-author]");
+  const hasAuthor = issue.author || issue.authorIg || issue.authorPortfolio || issue.authorEmail;
+
+  if (!hasAuthor) {
+    authorBlock?.remove();
+    return;
+  }
+
+  if (!authorBlock) {
+    authorBlock = document.createElement("section");
+    authorBlock.className = "article-author";
+    authorBlock.dataset.issueAuthor = "";
+    issueArticle.append(authorBlock);
+  }
+
+  const name = issue.author || "作者";
+  const links = [];
+
+  if (issue.authorIg) {
+    links.push(createProfileLink("IG", issue.authorIg));
+  }
+
+  if (issue.authorPortfolio) {
+    links.push(createProfileLink("作品集", issue.authorPortfolio));
+  }
+
+  if (issue.authorEmail) {
+    links.push(createProfileLink("Email", `mailto:${issue.authorEmail}`));
+  }
+
+  authorBlock.replaceChildren();
+
+  const label = document.createElement("p");
+  label.className = "eyebrow";
+  label.textContent = "Author";
+
+  const authorName = document.createElement("p");
+  authorName.className = "article-author-name";
+  authorName.textContent = name;
+
+  authorBlock.append(label, authorName, ...links);
+}
+
+function createProfileLink(label, href) {
+  const link = document.createElement("a");
+  link.href = href;
+  link.textContent = label;
+
+  if (!href.startsWith("mailto:")) {
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+  }
+
+  return link;
+}
+
+function renderIssueLike(issue) {
+  if (!issueArticle) {
+    return;
+  }
+
+  if (!issue.slug) {
+    likeButton?.remove();
+    likeButton = null;
+    return;
+  }
+
+  if (!likeButton) {
+    likeButton = document.createElement("button");
+    likeButton.className = "article-like-button";
+    likeButton.type = "button";
+    likeButton.addEventListener("click", likeCurrentIssue);
+    issueArticle.append(likeButton);
+  }
+
+  likeButton.textContent = `㊝ ${Number(issue.likes || 0)}`;
+}
+
+function likeCurrentIssue() {
+  if (!currentIssue?.slug || !isConfigured() || !likeButton) {
+    return;
+  }
+
+  likeButton.disabled = true;
+  const nextLikes = Number(currentIssue.likes || 0) + 1;
+  currentIssue.likes = nextLikes;
+  likeButton.textContent = `㊝ ${nextLikes}`;
+
+  const callbackName = `patchPaperLike${Date.now()}`;
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "like");
+  url.searchParams.set("slug", currentIssue.slug);
+  url.searchParams.set("callback", callbackName);
+
+  const script = document.createElement("script");
+  const cleanup = () => {
+    delete window[callbackName];
+    script.remove();
+    if (likeButton) {
+      likeButton.disabled = false;
+    }
+  };
+
+  window[callbackName] = (payload) => {
+    if (payload?.ok && typeof payload.likes !== "undefined") {
+      currentIssue.likes = Number(payload.likes || 0);
+      likeButton.textContent = `㊝ ${currentIssue.likes}`;
+    }
+    cleanup();
+  };
+
+  script.src = url.toString();
+  script.onerror = cleanup;
+  document.head.append(script);
+}
+
 function renderIssueList(payload) {
   if (!payload || !payload.ok || !Array.isArray(payload.issues) || !payload.issues.length) {
     return;
@@ -270,28 +397,24 @@ function renderIssueList(payload) {
   issueList.replaceChildren(
     ...payload.issues.map((issue) => {
       const link = document.createElement("a");
+      link.className = "article-row";
       link.href = getIssueReadHref(issue);
 
-      if (issue.imageUrl) {
-        const image = document.createElement("img");
-        image.src = issue.imageUrl;
-        image.alt = "";
-        link.append(image);
-      }
-
       const meta = document.createElement("span");
-      meta.textContent = issue.issue ? `Issue ${issue.issue}` : "Issue";
+      meta.className = "article-row-meta";
+      meta.textContent = [
+        issue.issue ? `Issue ${issue.issue}` : "Issue",
+        issue.publishedDate,
+        issue.author,
+        issue.tags,
+      ]
+        .filter(Boolean)
+        .join(" / ");
 
       const title = document.createElement("strong");
       title.textContent = issue.title || "untitled";
 
-      link.append(meta, title);
-
-      if (issue.tags) {
-        const tags = document.createElement("em");
-        tags.textContent = issue.tags;
-        link.append(tags);
-      }
+      link.append(title, meta);
 
       return link;
     })
@@ -325,7 +448,7 @@ function setupIssueAdmin() {
   button.type = "button";
   button.setAttribute("aria-label", "編輯文章");
   button.textContent = "✎";
-  document.body.append(button);
+  issueArticle.insertAdjacentElement("afterend", button);
 
   adminDialog = document.createElement("dialog");
   adminDialog.className = "admin-dialog";
@@ -361,6 +484,28 @@ function setupIssueAdmin() {
         文章標題
         <input name="title" type="text" required />
       </label>
+
+      <div class="admin-grid">
+        <label>
+          作者
+          <input name="author" type="text" placeholder="作者名稱" />
+        </label>
+        <label>
+          作者 Email
+          <input name="authorEmail" type="email" placeholder="合作聯絡信箱" />
+        </label>
+      </div>
+
+      <div class="admin-grid">
+        <label>
+          作者 IG
+          <input name="authorIg" type="url" placeholder="https://www.instagram.com/..." />
+        </label>
+        <label>
+          作品集
+          <input name="authorPortfolio" type="url" placeholder="https://..." />
+        </label>
+      </div>
 
       <label>
         信件標題
@@ -496,6 +641,10 @@ function fillAdminForm(adminForm) {
   adminForm.elements.slug.value = issue.slug || slug || "03";
   adminForm.elements.title.value = issue.title || "";
   adminForm.elements.subject.value = issue.subject || "";
+  adminForm.elements.author.value = issue.author || "";
+  adminForm.elements.authorIg.value = issue.authorIg || "";
+  adminForm.elements.authorPortfolio.value = issue.authorPortfolio || "";
+  adminForm.elements.authorEmail.value = issue.authorEmail || "";
   adminForm.elements.imageUrl.value = issue.imageUrl || "";
   adminForm.elements.imageFile.value = "";
   adminForm.elements.imageData.value = "";
@@ -536,6 +685,11 @@ function receiveAppsScriptMessage(event) {
       status: "current",
       imageUrl: payload.imageUrl || adminForm.elements.imageUrl.value,
       tags: adminForm.elements.tags.value,
+      author: adminForm.elements.author.value,
+      authorIg: adminForm.elements.authorIg.value,
+      authorPortfolio: adminForm.elements.authorPortfolio.value,
+      authorEmail: adminForm.elements.authorEmail.value,
+      likes: payload.likes || currentIssue?.likes || 0,
       body: adminForm.elements.body.value,
     };
     renderIssueArticle({ ok: true, issue: currentIssue });
