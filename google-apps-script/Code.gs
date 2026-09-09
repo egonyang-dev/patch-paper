@@ -6,6 +6,7 @@ const WELCOME_SENDER_NAME = "PATCH PAPER";
 const WELCOME_SUBJECT = "歡迎訂閱  黏  合  電  子  報 ";
 const WELCOME_TEXT = "hi 你已經訂閱囉♫♪♩♪♩";
 const ARTICLES_URL = "https://patch-paper.patchpaper-tw.workers.dev/issues/";
+const IMAGE_FOLDER_NAME = "PATCH PAPER issue images";
 const ISSUE_SHEET_NAME = "issues";
 const ISSUE_HEADERS = [
   "issue",
@@ -16,6 +17,8 @@ const ISSUE_HEADERS = [
   "status",
   "publishedAt",
   "sentAt",
+  "imageUrl",
+  "tags",
 ];
 
 function onOpen() {
@@ -72,6 +75,10 @@ function doGet(e) {
 
   if (action === "issue") {
     return issueResponse_(params);
+  }
+
+  if (action === "issues") {
+    return issuesResponse_(params);
   }
 
   if (action === "unsubscribe") {
@@ -281,6 +288,9 @@ function saveIssue_(params) {
   const subject = String(params.subject || "").trim() || title + "｜黏  合  電  子  報";
   const body = String(params.body || "").trim();
   const status = String(params.status || "current").trim().toLowerCase();
+  const tags = normalizeTags_(params.tags);
+  const imageUrl = saveIssueImage_(params) || String(params.imageUrl || "").trim();
+  const shouldSend = String(params.sendNewsletter || "").toLowerCase() === "yes";
 
   if (!slug) {
     throw new Error("請填 slug。");
@@ -327,6 +337,8 @@ function saveIssue_(params) {
       status,
       new Date(),
       "",
+      imageUrl,
+      tags,
     ];
 
     if (rowNumber) {
@@ -335,11 +347,31 @@ function saveIssue_(params) {
       sheet.appendRow(values);
     }
 
+    let sentCount = 0;
+
+    if (shouldSend) {
+      const savedRowNumber = rowNumber || sheet.getLastRow();
+      const issue = issueFromRow_(values, savedRowNumber);
+      const subscribers = getActiveSubscribers();
+
+      subscribers.forEach(function (subscriber) {
+        sendNewsletterEmail_(subscriber.email, subscriber.token, issue);
+      });
+
+      sentCount = subscribers.length;
+      markIssueSent_(savedRowNumber);
+    }
+
     return {
       ok: true,
       status: "saved",
-      message: "文章已更新。",
+      message: shouldSend
+        ? "文章已更新，已寄給 " + sentCount + " 位訂閱者。"
+        : "文章已更新。",
       slug: slug,
+      imageUrl: imageUrl,
+      tags: tags,
+      sentCount: sentCount,
     };
   } finally {
     lock.releaseLock();
@@ -397,6 +429,7 @@ function sendNewsletterEmail_(email, token, issue) {
     issue.body +
     "\n\n閱讀文章：" +
     issue.url +
+    (issue.tags ? "\n\n" + issue.tags : "") +
     "\n\n退訂：" +
     (unsubscribeUrl || "預覽信不適用");
   const htmlBody =
@@ -404,7 +437,13 @@ function sendNewsletterEmail_(email, token, issue) {
     '<p style="color:#d96f9a">' +
     escapeHtml_(issue.title) +
     "</p>" +
+    (issue.imageUrl
+      ? '<p><img src="' + escapeHtml_(issue.imageUrl) + '" alt="" style="max-width:100%;height:auto"></p>'
+      : "") +
     htmlParagraphs_(issue.body) +
+    (issue.tags
+      ? '<p style="color:#d96f9a">' + escapeHtml_(issue.tags) + "</p>"
+      : "") +
     '<p><a style="color:#d96f9a" href="' +
     escapeHtml_(issue.url) +
     '">閱讀文章</a></p>' +
@@ -462,7 +501,7 @@ function getPublicIssue_(slug) {
       currentIssue = issue;
     }
 
-    if (cleanSlug && issue.slug === cleanSlug && issue.status === "current") {
+    if (cleanSlug && issue.slug === cleanSlug && issue.status !== "draft") {
       return issue;
     }
   }
@@ -477,6 +516,8 @@ function issueFromRow_(row, rowNumber) {
   const subject = String(row[3] || title + "｜黏  合  電  子  報").trim();
   const body = String(row[4] || "").trim();
   const status = String(row[5] || "").trim().toLowerCase();
+  const imageUrl = String(row[8] || "").trim();
+  const tags = normalizeTags_(row[9]);
 
   return {
     rowNumber: rowNumber,
@@ -486,6 +527,8 @@ function issueFromRow_(row, rowNumber) {
     subject: subject,
     body: body,
     status: status,
+    imageUrl: imageUrl,
+    tags: tags,
     url: ARTICLES_URL + "read.html?slug=" + encodeURIComponent(slug || "03"),
   };
 }
@@ -503,6 +546,8 @@ function issueResponse_(params) {
           subject: issue.subject,
           status: issue.status,
           body: issue.body,
+          imageUrl: issue.imageUrl,
+          tags: issue.tags,
           url: issue.url,
         },
       }
@@ -510,6 +555,53 @@ function issueResponse_(params) {
         ok: false,
         message: "No current issue.",
       };
+
+  if (callback) {
+    if (!/^[A-Za-z_$][0-9A-Za-z_$]*(\.[A-Za-z_$][0-9A-Za-z_$]*)*$/.test(callback)) {
+      return ContentService.createTextOutput("Bad callback.")
+        .setMimeType(ContentService.MimeType.TEXT);
+    }
+
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(payload) + ");")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return ContentService.createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function issuesResponse_(params) {
+  const callback = String(params.callback || "").trim();
+  const sheet = getIssuesSheet_();
+  const rows = sheet.getDataRange().getValues();
+  const issues = [];
+
+  for (let i = 1; i < rows.length; i += 1) {
+    const issue = issueFromRow_(rows[i], i + 1);
+
+    if (!issue.issue && !issue.title && !issue.body) {
+      continue;
+    }
+
+    if (issue.status === "draft") {
+      continue;
+    }
+
+    issues.push({
+      issue: issue.issue,
+      title: issue.title,
+      slug: issue.slug,
+      status: issue.status,
+      imageUrl: issue.imageUrl,
+      tags: issue.tags,
+      url: issue.url,
+    });
+  }
+
+  const payload = {
+    ok: true,
+    issues: issues.reverse(),
+  };
 
   if (callback) {
     if (!/^[A-Za-z_$][0-9A-Za-z_$]*(\.[A-Za-z_$][0-9A-Za-z_$]*)*$/.test(callback)) {
@@ -567,6 +659,8 @@ function getIssuesSheet_() {
   if (!hasHeaders) {
     sheet.getRange(1, 1, 1, ISSUE_HEADERS.length).setValues([ISSUE_HEADERS]);
     sheet.setFrozenRows(1);
+  } else {
+    sheet.getRange(1, 1, 1, ISSUE_HEADERS.length).setValues([ISSUE_HEADERS]);
   }
 
   if (sheet.getLastRow() < 2) {
@@ -583,11 +677,59 @@ function getIssuesSheet_() {
       "current",
       "",
       "",
+      "",
+      "#文字",
     ]);
   }
 
   sheet.autoResizeColumns(1, ISSUE_HEADERS.length);
   return sheet;
+}
+
+function saveIssueImage_(params) {
+  const imageData = String(params.imageData || "").trim();
+
+  if (!imageData) {
+    return "";
+  }
+
+  const match = imageData.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+
+  if (!match) {
+    throw new Error("圖片格式無法讀取。");
+  }
+
+  const contentType = match[1];
+  const bytes = Utilities.base64Decode(match[2]);
+  const safeName = String(params.imageName || "patch-paper-image.jpg")
+    .replace(/[^\w.\-\u4e00-\u9fff]/g, "-")
+    .slice(0, 80);
+  const blob = Utilities.newBlob(bytes, contentType, safeName);
+  const folder = getImageFolder_();
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return "https://drive.google.com/uc?export=view&id=" + file.getId();
+}
+
+function getImageFolder_() {
+  const folders = DriveApp.getFoldersByName(IMAGE_FOLDER_NAME);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  return DriveApp.createFolder(IMAGE_FOLDER_NAME);
+}
+
+function normalizeTags_(value) {
+  return String(value || "")
+    .split(/[,\s]+/)
+    .map(function (tag) {
+      const cleanTag = tag.trim().replace(/^#+/, "");
+      return cleanTag ? "#" + cleanTag : "";
+    })
+    .filter(Boolean)
+    .join(" ");
 }
 
 function getSheet_() {

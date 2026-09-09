@@ -44,6 +44,8 @@ const ADMIN_PASSWORD = "你的管理密碼";
 
 文章頁右下角有鉛筆按鈕。輸入管理密碼後，可以直接改 issue、slug、標題、信件標題、文章內容。換行會保留，送出後會寫回 Google Sheet 的 `issues` 工作表。
 
+鉛筆編輯器也可以上傳圖片、填 `#分類`，並勾選是否要立刻寄給所有訂閱者。圖片會存到 Google Drive，Google Sheet 只記圖片網址。
+
 ## 更新文章
 
 文章內容放在 Google Sheet 的 `issues` 工作表。第一次設定時，到 Apps Script 執行：
@@ -63,6 +65,8 @@ body
 status
 publishedAt
 sentAt
+imageUrl
+tags
 ```
 
 平常只需要改這幾格：
@@ -74,9 +78,13 @@ slug：03
 subject：寄出去的信件標題
 body：電子報正文
 status：current
+imageUrl：圖片網址，可留空
+tags：#藝術市場 #散文
 ```
 
 `status` 填 `current` 的那一列，會被網站文章頁讀取，也會被寄信功能使用。
+
+文章列表會顯示所有 `status` 不是 `draft` 的文章。讀者可以從「文章」頁點標題進入單篇文章。
 
 文章網址是：
 
@@ -84,7 +92,9 @@ status：current
 https://patch-paper.patchpaper-tw.workers.dev/issues/read.html?slug=03
 ```
 
-也可以直接到文章頁右下角按鉛筆，把新文章貼進去。這個做法適合日常更新。
+也可以直接到文章頁右下角按鉛筆，把新文章貼進去。這個做法適合日常更新。如果是五篇文章，建議 `slug` 依序填 `01`、`02`、`03`、`04`、`05`。
+
+在鉛筆編輯器勾選「更新後立刻寄給所有訂閱者」時，按下更新會同時寄出電子報。沒有勾選時，只會上架到網站。
 
 ## Google Sheet 與 Apps Script 設定
 
@@ -99,7 +109,7 @@ https://patch-paper.patchpaper-tw.workers.dev/issues/read.html?slug=03
 9. 複製部署後產生的 Web App URL。
 10. 回到 `app.js`，貼到 `APPS_SCRIPT_URL`。
 
-第一次有人訂閱時，Apps Script 會在 Sheet 裡自動建立 `subscribers` 工作表和欄位。
+第一次有人訂閱時，Apps Script 會在 Sheet 裡自動建立 `subscribers` 工作表和欄位。第一次上傳圖片時，Google 會要求授權 Drive 權限。
 
 欄位如下：
 

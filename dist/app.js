@@ -5,6 +5,7 @@ const statusText = document.querySelector("#formStatus");
 const submitButton = form?.querySelector("button[type='submit']");
 const clickSymbols = ["☹", "♩", "☺", "♩", "♫", "☻", "♫"];
 const issueArticle = document.querySelector("[data-issue-slug]");
+const issueList = document.querySelector("[data-issue-list]");
 let currentIssue = null;
 let adminDialog = null;
 let adminStatus = null;
@@ -116,6 +117,32 @@ function loadIssueArticle() {
   document.head.append(script);
 }
 
+function loadIssueList() {
+  if (!issueList || !isConfigured()) {
+    return;
+  }
+
+  const callbackName = `patchPaperIssues${Date.now()}`;
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "issues");
+  url.searchParams.set("callback", callbackName);
+
+  const script = document.createElement("script");
+  const cleanup = () => {
+    delete window[callbackName];
+    script.remove();
+  };
+
+  window[callbackName] = (payload) => {
+    renderIssueList(payload);
+    cleanup();
+  };
+
+  script.src = url.toString();
+  script.onerror = cleanup;
+  document.head.append(script);
+}
+
 function renderIssueArticle(payload) {
   if (!payload || !payload.ok || !payload.issue) {
     return;
@@ -142,6 +169,9 @@ function renderIssueArticle(payload) {
   if (body && issue.body) {
     body.replaceChildren(...plainTextToParagraphs(issue.body));
   }
+
+  renderIssueImage(issue);
+  renderIssueTags(issue);
 }
 
 function plainTextToParagraphs(text) {
@@ -162,7 +192,103 @@ function plainTextToParagraphs(text) {
 }
 
 loadIssueArticle();
+loadIssueList();
 setupIssueAdmin();
+
+function renderIssueImage(issue) {
+  if (!issueArticle) {
+    return;
+  }
+
+  let figure = issueArticle.querySelector("[data-issue-image]");
+
+  if (!issue.imageUrl) {
+    figure?.remove();
+    return;
+  }
+
+  if (!figure) {
+    figure = document.createElement("figure");
+    figure.className = "article-image";
+    figure.dataset.issueImage = "";
+    const image = document.createElement("img");
+    image.alt = "";
+    figure.append(image);
+    const title = issueArticle.querySelector("[data-issue-title]");
+    title?.insertAdjacentElement("afterend", figure);
+  }
+
+  const image = figure.querySelector("img");
+  image.src = issue.imageUrl;
+}
+
+function renderIssueTags(issue) {
+  if (!issueArticle) {
+    return;
+  }
+
+  let tags = issueArticle.querySelector("[data-issue-tags]");
+
+  if (!issue.tags) {
+    tags?.remove();
+    return;
+  }
+
+  if (!tags) {
+    tags = document.createElement("p");
+    tags.className = "article-tags";
+    tags.dataset.issueTags = "";
+    issueArticle.append(tags);
+  }
+
+  tags.textContent = issue.tags;
+}
+
+function renderIssueList(payload) {
+  if (!payload || !payload.ok || !Array.isArray(payload.issues) || !payload.issues.length) {
+    return;
+  }
+
+  issueList.replaceChildren(
+    ...payload.issues.map((issue) => {
+      const link = document.createElement("a");
+      link.href = getIssueReadHref(issue);
+
+      if (issue.imageUrl) {
+        const image = document.createElement("img");
+        image.src = issue.imageUrl;
+        image.alt = "";
+        link.append(image);
+      }
+
+      const meta = document.createElement("span");
+      meta.textContent = issue.issue ? `Issue ${issue.issue}` : "Issue";
+
+      const title = document.createElement("strong");
+      title.textContent = issue.title || "untitled";
+
+      link.append(meta, title);
+
+      if (issue.tags) {
+        const tags = document.createElement("em");
+        tags.textContent = issue.tags;
+        link.append(tags);
+      }
+
+      return link;
+    })
+  );
+}
+
+function getIssueReadHref(issue) {
+  const slug = encodeURIComponent(issue.slug || issue.issue || "");
+
+  if (window.location.pathname.includes("/issues/")) {
+    return `./read.html?slug=${slug}`;
+  }
+
+  return `./issues/read.html?slug=${slug}`;
+}
 
 function setupIssueAdmin() {
   if (!issueArticle) {
@@ -189,6 +315,8 @@ function setupIssueAdmin() {
     <form class="admin-form" method="post" target="${iframeName}">
       <input type="hidden" name="action" value="saveIssue" />
       <input type="hidden" name="returnMode" value="iframe" />
+      <input type="hidden" name="imageData" value="" />
+      <input type="hidden" name="imageName" value="" />
 
       <div class="admin-head">
         <p>PATCH PAPER editor</p>
@@ -222,11 +350,31 @@ function setupIssueAdmin() {
       </label>
 
       <label>
+        圖片網址
+        <input name="imageUrl" type="url" placeholder="可留空，或貼圖片網址" />
+      </label>
+
+      <label>
+        上傳圖片
+        <input name="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" />
+      </label>
+
+      <label>
+        #分類
+        <input name="tags" type="text" placeholder="#藝術市場 #散文" />
+      </label>
+
+      <label>
         文章內容
         <textarea name="body" rows="13" required></textarea>
       </label>
 
       <input name="status" type="hidden" value="current" />
+
+      <label class="admin-check">
+        <input name="sendNewsletter" type="checkbox" value="yes" />
+        <span>更新後立刻寄給所有訂閱者</span>
+      </label>
 
       <p class="admin-status" role="status" aria-live="polite"></p>
 
@@ -257,7 +405,7 @@ function setupIssueAdmin() {
     adminDialog.close();
   });
 
-  adminForm.addEventListener("submit", (event) => {
+  adminForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     if (!isConfigured()) {
@@ -267,8 +415,17 @@ function setupIssueAdmin() {
 
     adminForm.action = APPS_SCRIPT_URL;
     adminSaveButton.disabled = true;
-    adminStatus.textContent = "更新中。";
-    HTMLFormElement.prototype.submit.call(adminForm);
+    adminStatus.textContent = adminForm.elements.sendNewsletter.checked
+      ? "更新中，等一下會寄出。"
+      : "更新中。";
+
+    try {
+      await prepareImageFields(adminForm);
+      HTMLFormElement.prototype.submit.call(adminForm);
+    } catch (error) {
+      adminSaveButton.disabled = false;
+      adminStatus.textContent = error.message || "圖片讀取失敗。";
+    }
   });
 }
 
@@ -281,7 +438,13 @@ function fillAdminForm(adminForm) {
   adminForm.elements.slug.value = issue.slug || slug || "03";
   adminForm.elements.title.value = issue.title || "";
   adminForm.elements.subject.value = issue.subject || "";
+  adminForm.elements.imageUrl.value = issue.imageUrl || "";
+  adminForm.elements.imageFile.value = "";
+  adminForm.elements.imageData.value = "";
+  adminForm.elements.imageName.value = "";
+  adminForm.elements.tags.value = issue.tags || "";
   adminForm.elements.body.value = issue.body || "";
+  adminForm.elements.sendNewsletter.checked = false;
 }
 
 function receiveAppsScriptMessage(event) {
@@ -313,6 +476,8 @@ function receiveAppsScriptMessage(event) {
       title: adminForm.elements.title.value,
       subject: adminForm.elements.subject.value,
       status: "current",
+      imageUrl: payload.imageUrl || adminForm.elements.imageUrl.value,
+      tags: adminForm.elements.tags.value,
       body: adminForm.elements.body.value,
     };
     renderIssueArticle({ ok: true, issue: currentIssue });
@@ -321,6 +486,56 @@ function receiveAppsScriptMessage(event) {
       url.searchParams.set("slug", currentIssue.slug);
       window.history.replaceState({}, "", url);
     }
-    window.setTimeout(() => adminDialog.close(), 600);
+    window.setTimeout(() => adminDialog.close(), 1000);
   }
+}
+
+function prepareImageFields(adminForm) {
+  const file = adminForm.elements.imageFile.files[0];
+  adminForm.elements.imageData.value = "";
+  adminForm.elements.imageName.value = "";
+
+  if (!file) {
+    return Promise.resolve();
+  }
+
+  if (!file.type.startsWith("image/")) {
+    return Promise.reject(new Error("請選圖片檔。"));
+  }
+
+  if (file.size > 8 * 1024 * 1024) {
+    return Promise.reject(new Error("圖片請先壓到 8MB 以內。"));
+  }
+
+  return resizeImage(file).then((dataUrl) => {
+    adminForm.elements.imageData.value = dataUrl;
+    adminForm.elements.imageName.value = file.name || "patch-paper-image.jpg";
+  });
+}
+
+function resizeImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error("圖片讀取失敗。"));
+    reader.onload = () => {
+      const image = new Image();
+
+      image.onerror = () => resolve(reader.result);
+      image.onload = () => {
+        const maxWidth = 1600;
+        const scale = Math.min(1, maxWidth / image.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(image.width * scale);
+        canvas.height = Math.round(image.height * scale);
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.84));
+      };
+
+      image.src = reader.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
 }
