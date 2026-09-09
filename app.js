@@ -4,6 +4,7 @@ const form = document.querySelector("#subscribeForm");
 const statusText = document.querySelector("#formStatus");
 const submitButton = form?.querySelector("button[type='submit']");
 const clickSymbols = ["☹", "♩", "☺", "♩", "♫", "☻", "♫"];
+const issueArticle = document.querySelector("[data-issue-slug]");
 
 function setStatus(message, isError = false) {
   statusText.textContent = message;
@@ -80,3 +81,74 @@ function showClickMood(event) {
 }
 
 window.addEventListener("pointerdown", showClickMood, { passive: true });
+
+function loadIssueArticle() {
+  if (!issueArticle || !isConfigured()) {
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const slug = issueArticle.dataset.issueSlug || params.get("slug") || "";
+  const callbackName = `patchPaperIssue${Date.now()}`;
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "issue");
+  url.searchParams.set("slug", slug);
+  url.searchParams.set("callback", callbackName);
+
+  const script = document.createElement("script");
+  const cleanup = () => {
+    delete window[callbackName];
+    script.remove();
+  };
+
+  window[callbackName] = (payload) => {
+    renderIssueArticle(payload);
+    cleanup();
+  };
+
+  script.src = url.toString();
+  script.onerror = cleanup;
+  document.head.append(script);
+}
+
+function renderIssueArticle(payload) {
+  if (!payload || !payload.ok || !payload.issue) {
+    return;
+  }
+
+  const issue = payload.issue;
+  const kicker = issueArticle.querySelector("[data-issue-kicker]");
+  const title = issueArticle.querySelector("[data-issue-title]");
+  const body = issueArticle.querySelector("[data-issue-body]");
+
+  if (kicker) {
+    kicker.textContent = issue.issue ? `Issue ${issue.issue}` : "Issue";
+  }
+
+  if (title && issue.title) {
+    title.textContent = issue.title;
+  }
+
+  if (body && issue.body) {
+    body.replaceChildren(...plainTextToParagraphs(issue.body));
+  }
+}
+
+function plainTextToParagraphs(text) {
+  return String(text || "")
+    .split(/\n{2,}/)
+    .filter((paragraph) => paragraph.trim())
+    .map((paragraph) => {
+      const element = document.createElement("p");
+      paragraph.split("\n").forEach((line, index) => {
+        if (index > 0) {
+          element.append(document.createElement("br"));
+        }
+
+        element.append(document.createTextNode(line));
+      });
+      return element;
+    });
+}
+
+loadIssueArticle();

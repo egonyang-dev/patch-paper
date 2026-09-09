@@ -5,13 +5,31 @@ const WELCOME_SENDER_NAME = "PATCH PAPER";
 const WELCOME_SUBJECT = "歡迎訂閱  黏  合  電  子  報 ";
 const WELCOME_TEXT = "hi 你已經訂閱囉♫♪♩♪♩";
 const ARTICLES_URL = "https://patch-paper.patchpaper-tw.workers.dev/issues/";
-const CURRENT_ISSUE_SUBJECT = "Issue 03｜黏  合  電  子  報";
-const CURRENT_ISSUE_TITLE = "Issue 03 preparing.";
-const CURRENT_ISSUE_URL = "https://patch-paper.patchpaper-tw.workers.dev/issues/03.html";
-const CURRENT_ISSUE_TEXT = [
-  "在這裡貼上這一期電子報正文。",
-  "可以一段一行。確認後先執行 sendCurrentIssueToMe，再執行 sendCurrentIssueToSubscribers。",
-].join("\n\n");
+const ISSUE_SHEET_NAME = "issues";
+const ISSUE_HEADERS = [
+  "issue",
+  "title",
+  "slug",
+  "subject",
+  "body",
+  "status",
+  "publishedAt",
+  "sentAt",
+];
+
+function onOpen() {
+  try {
+    SpreadsheetApp.getUi()
+      .createMenu("PATCH PAPER")
+      .addItem("建立管理表格", "setupPatchPaperManager")
+      .addSeparator()
+      .addItem("寄本期預覽給我", "sendCurrentIssueToMe")
+      .addItem("寄本期給訂閱者", "sendCurrentIssueToSubscribers")
+      .addToUi();
+  } catch (error) {
+    console.log("PATCH PAPER menu unavailable: " + (error.message || error));
+  }
+}
 
 function doPost(e) {
   const params = (e && e.parameter) || {};
@@ -45,6 +63,10 @@ function doPost(e) {
 function doGet(e) {
   const params = (e && e.parameter) || {};
   const action = String(params.action || "").toLowerCase();
+
+  if (action === "issue") {
+    return issueResponse_(params);
+  }
 
   if (action === "unsubscribe") {
     const result = unsubscribe_(params.token);
@@ -244,6 +266,12 @@ function getActiveSubscribers() {
   return subscribers;
 }
 
+function setupPatchPaperManager() {
+  getSheet_();
+  getIssuesSheet_();
+  return "PATCH PAPER 管理表格已建立。到 issues 工作表貼文章，status 填 current。";
+}
+
 function sendTestWelcomeEmail() {
   const email = Session.getEffectiveUser().getEmail();
 
@@ -262,11 +290,13 @@ function sendCurrentIssueToMe() {
     throw new Error("Google 無法讀取目前帳號 Email。請改用自己的 Email 先訂閱，再測試寄送。");
   }
 
-  sendNewsletterEmail_(email, "");
+  const issue = getCurrentIssue_();
+  sendNewsletterEmail_(email, "", issue);
   return "Preview newsletter sent to " + email;
 }
 
 function sendCurrentIssueToSubscribers() {
+  const issue = getCurrentIssue_();
   const subscribers = getActiveSubscribers();
 
   if (subscribers.length === 0) {
@@ -274,38 +304,189 @@ function sendCurrentIssueToSubscribers() {
   }
 
   subscribers.forEach(function (subscriber) {
-    sendNewsletterEmail_(subscriber.email, subscriber.token);
+    sendNewsletterEmail_(subscriber.email, subscriber.token, issue);
   });
 
+  markIssueSent_(issue.rowNumber);
   return "Newsletter sent to " + subscribers.length + " subscribers.";
 }
 
-function sendNewsletterEmail_(email, token) {
+function sendNewsletterEmail_(email, token, issue) {
   const unsubscribeUrl = token ? buildUnsubscribeUrl_(token) : "";
   const body =
-    CURRENT_ISSUE_TEXT +
+    issue.body +
     "\n\n閱讀文章：" +
-    CURRENT_ISSUE_URL +
+    issue.url +
     "\n\n退訂：" +
     (unsubscribeUrl || "預覽信不適用");
   const htmlBody =
     '<div style="font-family:Helvetica,Arial,sans-serif;color:#174ea6;font-size:18px;line-height:1.7">' +
     '<p style="color:#d96f9a">' +
-    escapeHtml_(CURRENT_ISSUE_TITLE) +
+    escapeHtml_(issue.title) +
     "</p>" +
-    htmlParagraphs_(CURRENT_ISSUE_TEXT) +
+    htmlParagraphs_(issue.body) +
     '<p><a style="color:#d96f9a" href="' +
-    escapeHtml_(CURRENT_ISSUE_URL) +
+    escapeHtml_(issue.url) +
     '">閱讀文章</a></p>' +
     (unsubscribeUrl
       ? '<p><a style="color:#d96f9a" href="' + escapeHtml_(unsubscribeUrl) + '">退訂</a></p>'
       : '<p style="color:#d96f9a">退訂：預覽信不適用</p>') +
     "</div>";
 
-  GmailApp.sendEmail(email, CURRENT_ISSUE_SUBJECT, body, {
+  GmailApp.sendEmail(email, issue.subject, body, {
     name: WELCOME_SENDER_NAME,
     htmlBody: htmlBody,
   });
+}
+
+function getCurrentIssue_() {
+  const sheet = getIssuesSheet_();
+  const rows = sheet.getDataRange().getValues();
+  let fallback = null;
+
+  for (let i = 1; i < rows.length; i += 1) {
+    const issue = issueFromRow_(rows[i], i + 1);
+
+    if (!issue.issue && !issue.title && !issue.body) {
+      continue;
+    }
+
+    fallback = issue;
+
+    if (issue.status === "current") {
+      return issue;
+    }
+  }
+
+  if (fallback) {
+    return fallback;
+  }
+
+  throw new Error("issues 工作表沒有可寄出的文章。");
+}
+
+function getPublicIssue_(slug) {
+  const sheet = getIssuesSheet_();
+  const rows = sheet.getDataRange().getValues();
+  const cleanSlug = String(slug || "").trim();
+  let currentIssue = null;
+
+  for (let i = 1; i < rows.length; i += 1) {
+    const issue = issueFromRow_(rows[i], i + 1);
+
+    if (!issue.issue && !issue.title && !issue.body) {
+      continue;
+    }
+
+    if (issue.status === "current") {
+      currentIssue = issue;
+    }
+
+    if (cleanSlug && issue.slug === cleanSlug && issue.status === "current") {
+      return issue;
+    }
+  }
+
+  return currentIssue;
+}
+
+function issueFromRow_(row, rowNumber) {
+  const issue = String(row[0] || "").trim();
+  const title = String(row[1] || issue || "Issue").trim();
+  const slug = String(row[2] || issue || "").trim();
+  const subject = String(row[3] || title + "｜黏  合  電  子  報").trim();
+  const body = String(row[4] || "").trim();
+  const status = String(row[5] || "").trim().toLowerCase();
+
+  return {
+    rowNumber: rowNumber,
+    issue: issue,
+    title: title,
+    slug: slug,
+    subject: subject,
+    body: body,
+    status: status,
+    url: ARTICLES_URL + "read.html?slug=" + encodeURIComponent(slug || "03"),
+  };
+}
+
+function issueResponse_(params) {
+  const callback = String(params.callback || "").trim();
+  const issue = getPublicIssue_(params.slug);
+  const payload = issue
+    ? {
+        ok: true,
+        issue: {
+          issue: issue.issue,
+          title: issue.title,
+          slug: issue.slug,
+          body: issue.body,
+          url: issue.url,
+        },
+      }
+    : {
+        ok: false,
+        message: "No current issue.",
+      };
+
+  if (callback) {
+    if (!/^[A-Za-z_$][0-9A-Za-z_$]*(\.[A-Za-z_$][0-9A-Za-z_$]*)*$/.test(callback)) {
+      return ContentService.createTextOutput("Bad callback.")
+        .setMimeType(ContentService.MimeType.TEXT);
+    }
+
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(payload) + ");")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return ContentService.createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function markIssueSent_(rowNumber) {
+  if (!rowNumber) {
+    return;
+  }
+
+  const sheet = getIssuesSheet_();
+  sheet.getRange(rowNumber, 8).setValue(new Date());
+}
+
+function getIssuesSheet_() {
+  const spreadsheet = getSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(ISSUE_SHEET_NAME);
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(ISSUE_SHEET_NAME);
+  }
+
+  const firstRow = sheet.getRange(1, 1, 1, ISSUE_HEADERS.length).getValues()[0];
+  const hasHeaders = firstRow.join("") !== "";
+
+  if (!hasHeaders) {
+    sheet.getRange(1, 1, 1, ISSUE_HEADERS.length).setValues([ISSUE_HEADERS]);
+    sheet.setFrozenRows(1);
+  }
+
+  if (sheet.getLastRow() < 2) {
+    sheet.appendRow([
+      "03",
+      "Issue 03 preparing.",
+      "03",
+      "Issue 03｜黏  合  電  子  報",
+      [
+        "在這裡貼上這一期電子報正文。",
+        "可以一段一行。",
+        "status 填 current，網站文章頁和寄信都會讀這一列。",
+      ].join("\n\n"),
+      "current",
+      "",
+      "",
+    ]);
+  }
+
+  sheet.autoResizeColumns(1, ISSUE_HEADERS.length);
+  return sheet;
 }
 
 function getSheet_() {
