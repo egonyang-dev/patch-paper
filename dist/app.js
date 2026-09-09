@@ -111,7 +111,7 @@ function loadIssueArticle() {
   if (cachedPayload) {
     renderIssueArticle(cachedPayload);
   } else {
-    renderIssueLoading("文章讀取中。", "資料從 Google Sheet 讀取，請稍等。");
+    renderIssueLoading("等一下下♫♪♩♪♩", "");
   }
 
   const callbackName = `patchPaperIssue${Date.now()}`;
@@ -128,7 +128,7 @@ function loadIssueArticle() {
 
   const loadingTimer = window.setTimeout(() => {
     if (!didRender) {
-      renderIssueLoading("文章讀取中。", "Google Sheet 回應比較慢，請再等一下。");
+      renderIssueLoading("等一下下♫♪♩♪♩", "");
     }
   }, 4200);
 
@@ -146,7 +146,7 @@ function loadIssueArticle() {
   script.onerror = () => {
     window.clearTimeout(loadingTimer);
     if (!didRender) {
-      renderIssueLoading("文章暫時讀不到。", "請重新整理一次。");
+      renderIssueLoading("等一下下♫♪♩♪♩", "");
     }
     cleanup();
   };
@@ -164,7 +164,7 @@ function loadIssueList() {
   if (cachedPayload) {
     renderIssueList(cachedPayload);
   } else {
-    renderIssueListLoading("文章讀取中。");
+    renderIssueListLoading("等一下下♫♪♩♪♩");
   }
 
   const callbackName = `patchPaperIssues${Date.now()}`;
@@ -180,7 +180,7 @@ function loadIssueList() {
 
   const loadingTimer = window.setTimeout(() => {
     if (!didRender) {
-      renderIssueListLoading("文章讀取比較久，請重新整理一次。");
+      renderIssueListLoading("等一下下♫♪♩♪♩");
     }
   }, 5200);
 
@@ -198,7 +198,7 @@ function loadIssueList() {
   script.onerror = () => {
     window.clearTimeout(loadingTimer);
     if (!didRender) {
-      renderIssueListLoading("文章暫時讀不到，請重新整理一次。");
+      renderIssueListLoading("等一下下♫♪♩♪♩");
     }
     cleanup();
   };
