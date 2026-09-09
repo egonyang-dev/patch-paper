@@ -245,7 +245,34 @@ function renderIssueImage(issue) {
   }
 
   const image = figure.querySelector("img");
-  image.src = issue.imageUrl;
+  image.src = normalizeIssueImageUrl(issue.imageUrl);
+}
+
+function normalizeIssueImageUrl(imageUrl) {
+  const url = String(imageUrl || "").trim();
+  const fileId = getGoogleDriveFileId(url);
+
+  if (!fileId) {
+    return url;
+  }
+
+  return `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w1600`;
+}
+
+function getGoogleDriveFileId(url) {
+  const idMatch = url.match(/[?&]id=([^&]+)/);
+
+  if (idMatch) {
+    return decodeURIComponent(idMatch[1]);
+  }
+
+  const pathMatch = url.match(/\/file\/d\/([^/]+)/);
+
+  if (pathMatch) {
+    return decodeURIComponent(pathMatch[1]);
+  }
+
+  return "";
 }
 
 function renderIssueTags(issue) {
