@@ -31,6 +31,7 @@ function onOpen() {
     SpreadsheetApp.getUi()
       .createMenu("PATCH PAPER")
       .addItem("建立管理表格", "setupPatchPaperManager")
+      .addItem("授權圖片上傳", "authorizePatchPaper")
       .addSeparator()
       .addItem("寄本期預覽給我", "sendCurrentIssueToMe")
       .addItem("寄本期給訂閱者", "sendCurrentIssueToSubscribers")
@@ -513,6 +514,13 @@ function setupPatchPaperManager() {
   getSheet_();
   getIssuesSheet_();
   return "PATCH PAPER 管理表格已建立。到 issues 工作表貼文章，status 填 current。";
+}
+
+function authorizePatchPaper() {
+  getSheet_();
+  getIssuesSheet_();
+  getImageFolder_();
+  return "PATCH PAPER 已取得圖片上傳需要的 Google Drive 權限。";
 }
 
 function sendTestWelcomeEmail() {

@@ -124,6 +124,14 @@ https://patch-paper.patchpaper-tw.workers.dev/issues/read.html?slug=03
 
 第一次有人訂閱時，Apps Script 會在 Sheet 裡自動建立 `subscribers` 工作表和欄位。第一次上傳圖片時，Google 會要求授權 Drive 權限。
 
+如果後台上傳圖片時出現 `DriveApp.getFoldersByName` 權限錯誤，到 Apps Script 上方選單執行：
+
+```text
+PATCH PAPER → 授權圖片上傳
+```
+
+跳出 Google 授權視窗後，允許它使用 Drive。這只需要做一次。
+
 欄位如下：
 
 ```text
