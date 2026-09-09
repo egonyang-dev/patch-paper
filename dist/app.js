@@ -15,6 +15,10 @@ let adminStatus = null;
 let adminSaveButton = null;
 let adminDeleteButton = null;
 let likeButton = null;
+let feedbackDialog = null;
+let feedbackStatus = null;
+let feedbackButton = null;
+let feedbackSubmitButton = null;
 
 function setStatus(message, isError = false) {
   statusText.textContent = message;
@@ -239,6 +243,7 @@ function renderIssueArticle(payload) {
   renderIssueTags(issue);
   renderIssueAuthor(issue);
   renderIssueLike(issue);
+  renderIssueFeedback(issue);
 }
 
 function renderMissingIssue() {
@@ -258,6 +263,7 @@ function renderMissingIssue() {
   renderIssueTags({});
   renderIssueAuthor({});
   renderIssueLike({});
+  renderIssueFeedback({});
 }
 
 function renderIssueLoading(titleText, bodyText) {
@@ -277,6 +283,7 @@ function renderIssueLoading(titleText, bodyText) {
   renderIssueTags({});
   renderIssueAuthor({});
   renderIssueLike({});
+  renderIssueFeedback({});
 }
 
 function plainTextToParagraphs(text) {
@@ -299,6 +306,7 @@ function plainTextToParagraphs(text) {
 loadIssueArticle();
 loadIssueList();
 setupIssueAdmin();
+setupIssueFeedback();
 
 function normalizeCurrentIssueUrl() {
   if (window.location.pathname.endsWith("/issues/read")) {
@@ -503,6 +511,7 @@ function renderIssueLike(issue) {
   if (!issue.slug) {
     likeButton?.remove();
     likeButton = null;
+    removeEmptyArticleActions();
     return;
   }
 
@@ -511,10 +520,10 @@ function renderIssueLike(issue) {
     likeButton.className = "article-like-button";
     likeButton.type = "button";
     likeButton.addEventListener("click", likeCurrentIssue);
-    issueArticle.append(likeButton);
   }
 
   likeButton.textContent = `㊝ ${Number(issue.likes || 0)}`;
+  ensureArticleActions().prepend(likeButton);
 }
 
 function likeCurrentIssue() {
@@ -553,6 +562,194 @@ function likeCurrentIssue() {
   script.src = url.toString();
   script.onerror = cleanup;
   document.head.append(script);
+}
+
+function renderIssueFeedback(issue) {
+  if (!issueArticle) {
+    return;
+  }
+
+  if (!issue.slug) {
+    feedbackButton?.remove();
+    feedbackButton = null;
+    removeEmptyArticleActions();
+    return;
+  }
+
+  if (!feedbackButton) {
+    feedbackButton = document.createElement("button");
+    feedbackButton.className = "article-feedback-button";
+    feedbackButton.type = "button";
+    feedbackButton.textContent = "秘密告白信 / 建設信";
+    feedbackButton.addEventListener("click", openFeedbackDialog);
+  }
+
+  ensureArticleActions().append(feedbackButton);
+}
+
+function ensureArticleActions() {
+  let actions = issueArticle.querySelector("[data-article-actions]");
+
+  if (!actions) {
+    actions = document.createElement("div");
+    actions.className = "article-actions";
+    actions.dataset.articleActions = "";
+    issueArticle.append(actions);
+  }
+
+  return actions;
+}
+
+function removeEmptyArticleActions() {
+  const actions = issueArticle?.querySelector("[data-article-actions]");
+
+  if (actions && !actions.children.length) {
+    actions.remove();
+  }
+}
+
+function setupIssueFeedback() {
+  if (!issueArticle) {
+    return;
+  }
+
+  const iframeName = "patchPaperFeedbackFrame";
+  const frame = document.createElement("iframe");
+  frame.className = "hidden-frame";
+  frame.name = iframeName;
+  frame.title = "回饋信送出狀態";
+  document.body.append(frame);
+
+  feedbackDialog = document.createElement("dialog");
+  feedbackDialog.className = "feedback-dialog";
+  feedbackDialog.innerHTML = `
+    <form class="feedback-form" method="post" target="${iframeName}">
+      <input type="hidden" name="action" value="feedback" />
+      <input type="hidden" name="returnMode" value="iframe" />
+      <input type="hidden" name="issue" value="" />
+      <input type="hidden" name="slug" value="" />
+      <input type="hidden" name="title" value="" />
+      <input type="hidden" name="url" value="" />
+      <input type="hidden" name="userAgent" value="" />
+
+      <div class="feedback-head">
+        <p>秘密回饋信</p>
+        <button type="button" class="feedback-close" aria-label="關閉">×</button>
+      </div>
+
+      <label>
+        這封信是
+        <select name="feedbackType">
+          <option value="秘密告白">秘密告白</option>
+          <option value="建設信">建設信</option>
+          <option value="愛的回饋">愛的回饋</option>
+        </select>
+      </label>
+
+      <label>
+        信
+        <textarea name="message" rows="7" placeholder="可以匿名。可以很短。也可以把共鳴寫到有點狼狽。" required></textarea>
+      </label>
+
+      <div class="feedback-grid">
+        <label>
+          名字
+          <input name="name" type="text" placeholder="可留空" />
+        </label>
+        <label>
+          Email
+          <input name="email" type="email" placeholder="想收到回信再填" />
+        </label>
+      </div>
+
+      <p class="feedback-note">這封信只會送到 PATCH PAPER 後台，不會公開。</p>
+      <p class="feedback-status" role="status" aria-live="polite"></p>
+
+      <div class="feedback-actions">
+        <button type="button" class="feedback-cancel">取消</button>
+        <button type="submit" class="feedback-submit">送出 ♫</button>
+      </div>
+    </form>
+  `;
+  document.body.append(feedbackDialog);
+
+  const feedbackForm = feedbackDialog.querySelector(".feedback-form");
+  feedbackStatus = feedbackDialog.querySelector(".feedback-status");
+  feedbackSubmitButton = feedbackDialog.querySelector(".feedback-submit");
+
+  feedbackDialog.querySelector(".feedback-close").addEventListener("click", () => {
+    feedbackDialog.close();
+  });
+
+  feedbackDialog.querySelector(".feedback-cancel").addEventListener("click", () => {
+    feedbackDialog.close();
+  });
+
+  feedbackForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitFeedbackForm(feedbackForm);
+  });
+}
+
+function openFeedbackDialog() {
+  if (!feedbackDialog) {
+    return;
+  }
+
+  const feedbackForm = feedbackDialog.querySelector(".feedback-form");
+  fillFeedbackForm(feedbackForm);
+  feedbackStatus.textContent = "";
+  feedbackDialog.showModal();
+  feedbackForm.elements.message.focus();
+}
+
+function fillFeedbackForm(feedbackForm) {
+  const issue = currentIssue || {};
+  feedbackForm.elements.issue.value = issue.issue || "";
+  feedbackForm.elements.slug.value = issue.slug || "";
+  feedbackForm.elements.title.value = issue.title || "";
+  feedbackForm.elements.url.value = window.location.href;
+  feedbackForm.elements.userAgent.value = navigator.userAgent || "";
+  feedbackForm.elements.feedbackType.value = "秘密告白";
+  feedbackForm.elements.message.value = "";
+  feedbackForm.elements.name.value = "";
+  feedbackForm.elements.email.value = "";
+}
+
+function submitFeedbackForm(feedbackForm) {
+  if (!isConfigured()) {
+    feedbackStatus.textContent = "等一下下♫♪♩♪♩";
+    return;
+  }
+
+  if (!feedbackForm.elements.message.value.trim()) {
+    feedbackStatus.textContent = "信還是空的。";
+    feedbackForm.elements.message.focus();
+    return;
+  }
+
+  feedbackForm.setAttribute("action", APPS_SCRIPT_URL);
+  feedbackSubmitButton.disabled = true;
+  feedbackStatus.textContent = "送出中。";
+  HTMLFormElement.prototype.submit.call(feedbackForm);
+}
+
+function handleFeedbackResponse(payload) {
+  if (!feedbackStatus) {
+    return;
+  }
+
+  if (feedbackSubmitButton) {
+    feedbackSubmitButton.disabled = false;
+  }
+
+  if (!payload.ok) {
+    feedbackStatus.textContent = payload.message || "送出失敗。";
+    return;
+  }
+
+  feedbackStatus.textContent = "收到了。謝謝你把信放在這裡♫♪♩♪♩";
+  window.setTimeout(() => feedbackDialog?.close(), 1200);
 }
 
 function renderIssueList(payload) {
@@ -838,7 +1035,16 @@ function fillAdminForm(adminForm) {
 function receiveAppsScriptMessage(event) {
   const payload = event.data || {};
 
-  if (payload.source !== "patch-paper-subscription" || !adminDialog?.open) {
+  if (payload.source !== "patch-paper-subscription") {
+    return;
+  }
+
+  if (feedbackDialog?.open) {
+    handleFeedbackResponse(payload);
+    return;
+  }
+
+  if (!adminDialog?.open) {
     return;
   }
 

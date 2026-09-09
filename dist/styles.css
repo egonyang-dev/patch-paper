@@ -595,10 +595,18 @@ h2 {
   text-underline-offset: 0.18em;
 }
 
+.article-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 26px;
+  align-items: center;
+  margin-top: 28px;
+}
+
 .article-like-button {
   display: inline-flex;
   width: fit-content;
-  margin-top: 28px;
+  margin: 0;
   border: 0;
   background: transparent;
   color: var(--pink);
@@ -617,6 +625,34 @@ h2 {
 .article-like-button:disabled {
   opacity: 0.65;
   cursor: wait;
+}
+
+.article-feedback-button {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font: inherit;
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1.2;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.article-feedback-button::before {
+  content: "✉";
+  margin-right: 0.4em;
+  color: var(--pink);
+}
+
+.article-feedback-button:hover,
+.article-feedback-button:focus-visible {
+  color: var(--pink);
+  outline: 0;
 }
 
 .admin-edit-button {
@@ -639,7 +675,8 @@ h2 {
   outline: 0;
 }
 
-.admin-dialog {
+.admin-dialog,
+.feedback-dialog {
   width: min(680px, calc(100% - 28px));
   max-height: min(820px, calc(100% - 28px));
   padding: 0;
@@ -649,11 +686,13 @@ h2 {
   color: var(--blue);
 }
 
-.admin-dialog::backdrop {
+.admin-dialog::backdrop,
+.feedback-dialog::backdrop {
   background: rgba(23, 78, 166, 0.18);
 }
 
-.admin-form {
+.admin-form,
+.feedback-form {
   display: grid;
   gap: 16px;
   padding: clamp(18px, 4vw, 32px);
@@ -661,17 +700,22 @@ h2 {
 
 .admin-head,
 .admin-actions,
-.admin-grid {
+.admin-grid,
+.feedback-head,
+.feedback-actions,
+.feedback-grid {
   display: flex;
   gap: 12px;
 }
 
-.admin-head {
+.admin-head,
+.feedback-head {
   align-items: center;
   justify-content: space-between;
 }
 
-.admin-head p {
+.admin-head p,
+.feedback-head p {
   margin: 0;
   color: var(--pink);
   font-size: clamp(20px, 4vw, 34px);
@@ -680,7 +724,10 @@ h2 {
 .admin-close,
 .admin-cancel,
 .admin-save,
-.admin-delete {
+.admin-delete,
+.feedback-close,
+.feedback-cancel,
+.feedback-submit {
   border: 1px solid var(--pink);
   background: transparent;
   color: var(--pink);
@@ -688,7 +735,8 @@ h2 {
   cursor: pointer;
 }
 
-.admin-close {
+.admin-close,
+.feedback-close {
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -696,7 +744,8 @@ h2 {
   line-height: 1;
 }
 
-.admin-form label {
+.admin-form label,
+.feedback-form label {
   display: grid;
   gap: 7px;
   color: var(--pink);
@@ -704,7 +753,10 @@ h2 {
 }
 
 .admin-form input,
-.admin-form textarea {
+.admin-form textarea,
+.feedback-form input,
+.feedback-form select,
+.feedback-form textarea {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
@@ -733,6 +785,16 @@ h2 {
   resize: vertical;
 }
 
+.feedback-form textarea {
+  resize: vertical;
+}
+
+.feedback-note {
+  margin: 0;
+  color: var(--pink);
+  font-size: 14px;
+}
+
 .admin-check {
   display: flex;
   grid-template-columns: none;
@@ -740,17 +802,21 @@ h2 {
   color: var(--blue);
 }
 
-.admin-grid label {
+.admin-grid label,
+.feedback-grid label {
   flex: 1 1 0;
 }
 
-.admin-actions {
+.admin-actions,
+.feedback-actions {
   justify-content: flex-end;
 }
 
 .admin-cancel,
 .admin-save,
-.admin-delete {
+.admin-delete,
+.feedback-cancel,
+.feedback-submit {
   min-height: 42px;
   padding: 8px 16px;
 }
@@ -760,19 +826,22 @@ h2 {
   color: var(--pink);
 }
 
-.admin-save {
+.admin-save,
+.feedback-submit {
   background: var(--blue);
   border-color: var(--blue);
   color: var(--background);
 }
 
 .admin-save:disabled,
-.admin-delete:disabled {
+.admin-delete:disabled,
+.feedback-submit:disabled {
   opacity: 0.5;
   cursor: wait;
 }
 
-.admin-status {
+.admin-status,
+.feedback-status {
   min-height: 23px;
   margin: 0;
   color: var(--pink);
@@ -831,6 +900,10 @@ h2 {
     flex-direction: column;
   }
 
+  .feedback-grid {
+    flex-direction: column;
+  }
+
   .article-row {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -840,13 +913,16 @@ h2 {
     justify-self: start;
   }
 
-  .admin-actions {
+  .admin-actions,
+  .feedback-actions {
     justify-content: stretch;
   }
 
   .admin-cancel,
   .admin-save,
-  .admin-delete {
+  .admin-delete,
+  .feedback-cancel,
+  .feedback-submit {
     flex: 1 1 0;
   }
 

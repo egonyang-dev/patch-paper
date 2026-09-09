@@ -8,6 +8,7 @@ const WELCOME_TEXT = "hi 你已經訂閱囉♫♪♩♪♩";
 const ARTICLES_URL = "https://patch-paper.patchpaper-tw.workers.dev/issues/";
 const IMAGE_FOLDER_NAME = "PATCH PAPER issue images";
 const ISSUE_SHEET_NAME = "issues";
+const FEEDBACK_SHEET_NAME = "feedback";
 const ISSUE_HEADERS = [
   "issue",
   "title",
@@ -24,6 +25,18 @@ const ISSUE_HEADERS = [
   "authorPortfolio",
   "authorEmail",
   "likes",
+];
+const FEEDBACK_HEADERS = [
+  "createdAt",
+  "issue",
+  "slug",
+  "title",
+  "type",
+  "message",
+  "name",
+  "email",
+  "url",
+  "userAgent",
 ];
 
 function onOpen() {
@@ -63,6 +76,11 @@ function doPost(e) {
 
     if (action === "deleteissue") {
       const result = deleteIssue_(params);
+      return iframeResponse_(result);
+    }
+
+    if (action === "feedback") {
+      const result = saveFeedback_(params);
       return iframeResponse_(result);
     }
 
@@ -513,14 +531,51 @@ function likeIssue_(slug) {
 function setupPatchPaperManager() {
   getSheet_();
   getIssuesSheet_();
+  getFeedbackSheet_();
   return "PATCH PAPER 管理表格已建立。到 issues 工作表貼文章，status 填 current。";
 }
 
 function authorizePatchPaper() {
   getSheet_();
   getIssuesSheet_();
+  getFeedbackSheet_();
   getImageFolder_();
   return "PATCH PAPER 已取得圖片上傳需要的 Google Drive 權限。";
+}
+
+function saveFeedback_(params) {
+  const message = String(params.message || "").trim();
+
+  if (!message) {
+    return {
+      ok: false,
+      status: "missing_message",
+      message: "信還是空的。",
+    };
+  }
+
+  const sheet = getFeedbackSheet_();
+  const email = normalizeEmail_(params.email);
+  const feedbackType = String(params.feedbackType || "秘密告白").trim();
+
+  sheet.appendRow([
+    new Date(),
+    String(params.issue || "").trim(),
+    String(params.slug || "").trim(),
+    String(params.title || "").trim(),
+    feedbackType,
+    message,
+    String(params.name || "").trim(),
+    email,
+    String(params.url || "").trim(),
+    String(params.userAgent || "").trim(),
+  ]);
+
+  return {
+    ok: true,
+    status: "feedback_saved",
+    message: "收到了。謝謝你把信放在這裡♫♪♩♪♩",
+  };
 }
 
 function sendTestWelcomeEmail() {
@@ -861,6 +916,28 @@ function getIssuesSheet_() {
   }
 
   sheet.autoResizeColumns(1, ISSUE_HEADERS.length);
+  return sheet;
+}
+
+function getFeedbackSheet_() {
+  const spreadsheet = getSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(FEEDBACK_SHEET_NAME);
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(FEEDBACK_SHEET_NAME);
+  }
+
+  const firstRow = sheet.getRange(1, 1, 1, FEEDBACK_HEADERS.length).getValues()[0];
+  const hasHeaders = firstRow.join("") !== "";
+
+  if (!hasHeaders) {
+    sheet.getRange(1, 1, 1, FEEDBACK_HEADERS.length).setValues([FEEDBACK_HEADERS]);
+    sheet.setFrozenRows(1);
+  } else {
+    sheet.getRange(1, 1, 1, FEEDBACK_HEADERS.length).setValues([FEEDBACK_HEADERS]);
+  }
+
+  sheet.autoResizeColumns(1, FEEDBACK_HEADERS.length);
   return sheet;
 }
 
