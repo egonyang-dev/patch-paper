@@ -648,7 +648,7 @@ function setupIssueFeedback() {
 
       <label>
         信
-        <textarea name="message" rows="7" placeholder="可以匿名。可以很短。也可以把共鳴寫到有點狼狽。" required></textarea>
+        <textarea name="message" rows="7" placeholder="可以匿名。可以很短。" required></textarea>
       </label>
 
       <div class="feedback-grid">
