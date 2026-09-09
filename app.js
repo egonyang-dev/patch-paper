@@ -6,6 +6,9 @@ const submitButton = form?.querySelector("button[type='submit']");
 const clickSymbols = ["☹", "♩", "☺", "♩", "♫", "☻", "♫"];
 const issueArticle = document.querySelector("[data-issue-slug]");
 const issueList = document.querySelector("[data-issue-list]");
+const ISSUE_CACHE_PREFIX = "patchPaperIssue:";
+const ISSUE_LIST_CACHE_KEY = "patchPaperIssues";
+const CACHE_MAX_AGE_MS = 1000 * 60 * 30;
 let currentIssue = null;
 let adminDialog = null;
 let adminStatus = null;
@@ -53,14 +56,17 @@ form?.addEventListener("submit", async (event) => {
   setStatus("送出中。");
 
   try {
-    await fetch(APPS_SCRIPT_URL, {
+    const request = fetch(APPS_SCRIPT_URL, {
       method: "POST",
       mode: "no-cors",
       body: new FormData(form),
     });
+    request.catch(() => {});
+
+    await Promise.race([request, wait(1600)]);
 
     form.reset();
-    setStatus("訂閱完成。");
+    setStatus("已送出。信箱可能晚一點收到。");
   } catch (error) {
     setStatus("送出失敗。請稍後再試。", true);
   } finally {
@@ -89,6 +95,7 @@ function showClickMood(event) {
 
 window.addEventListener("pointerdown", showClickMood, { passive: true });
 window.addEventListener("message", receiveAppsScriptMessage);
+normalizeCurrentIssueUrl();
 
 function loadIssueArticle() {
   if (!issueArticle || !isConfigured()) {
@@ -97,6 +104,16 @@ function loadIssueArticle() {
 
   const params = new URLSearchParams(window.location.search);
   const slug = issueArticle.dataset.issueSlug || params.get("slug") || "";
+  const cacheKey = `${ISSUE_CACHE_PREFIX}${slug || "current"}`;
+  const cachedPayload = readCache(cacheKey);
+  let didRender = Boolean(cachedPayload);
+
+  if (cachedPayload) {
+    renderIssueArticle(cachedPayload);
+  } else {
+    renderIssueLoading("文章讀取中。", "資料從 Google Sheet 讀取，請稍等。");
+  }
+
   const callbackName = `patchPaperIssue${Date.now()}`;
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "issue");
@@ -109,19 +126,45 @@ function loadIssueArticle() {
     script.remove();
   };
 
+  const loadingTimer = window.setTimeout(() => {
+    if (!didRender) {
+      renderIssueLoading("文章讀取中。", "Google Sheet 回應比較慢，請再等一下。");
+    }
+  }, 4200);
+
   window[callbackName] = (payload) => {
+    didRender = true;
+    window.clearTimeout(loadingTimer);
+    if (payload?.ok && payload.issue) {
+      writeCache(cacheKey, payload);
+    }
     renderIssueArticle(payload);
     cleanup();
   };
 
   script.src = url.toString();
-  script.onerror = cleanup;
+  script.onerror = () => {
+    window.clearTimeout(loadingTimer);
+    if (!didRender) {
+      renderIssueLoading("文章暫時讀不到。", "請重新整理一次。");
+    }
+    cleanup();
+  };
   document.head.append(script);
 }
 
 function loadIssueList() {
   if (!issueList || !isConfigured()) {
     return;
+  }
+
+  const cachedPayload = readCache(ISSUE_LIST_CACHE_KEY);
+  let didRender = Boolean(cachedPayload);
+
+  if (cachedPayload) {
+    renderIssueList(cachedPayload);
+  } else {
+    renderIssueListLoading("文章讀取中。");
   }
 
   const callbackName = `patchPaperIssues${Date.now()}`;
@@ -135,13 +178,30 @@ function loadIssueList() {
     script.remove();
   };
 
+  const loadingTimer = window.setTimeout(() => {
+    if (!didRender) {
+      renderIssueListLoading("文章讀取比較久，請重新整理一次。");
+    }
+  }, 5200);
+
   window[callbackName] = (payload) => {
+    didRender = true;
+    window.clearTimeout(loadingTimer);
+    if (payload?.ok && Array.isArray(payload.issues)) {
+      writeCache(ISSUE_LIST_CACHE_KEY, payload);
+    }
     renderIssueList(payload);
     cleanup();
   };
 
   script.src = url.toString();
-  script.onerror = cleanup;
+  script.onerror = () => {
+    window.clearTimeout(loadingTimer);
+    if (!didRender) {
+      renderIssueListLoading("文章暫時讀不到，請重新整理一次。");
+    }
+    cleanup();
+  };
   document.head.append(script);
 }
 
@@ -166,13 +226,13 @@ function renderIssueArticle(payload) {
     kicker.textContent = [issueLabel, issue.tags].filter(Boolean).join("  ");
   }
 
-  if (title && issue.title) {
-    title.textContent = issue.title;
-    document.title = `${issue.title} | PATCH PAPER`;
+  if (title) {
+    title.textContent = issue.title || "untitled";
+    document.title = `${issue.title || "文章"} | PATCH PAPER`;
   }
 
-  if (body && issue.body) {
-    body.replaceChildren(...plainTextToParagraphs(issue.body));
+  if (body) {
+    body.replaceChildren(...plainTextToParagraphs(issue.body || ""));
   }
 
   renderIssueImage(issue);
@@ -200,6 +260,25 @@ function renderMissingIssue() {
   renderIssueLike({});
 }
 
+function renderIssueLoading(titleText, bodyText) {
+  if (!issueArticle) {
+    return;
+  }
+
+  issueArticle.classList.add("is-loading");
+  currentIssue = null;
+  const kicker = issueArticle.querySelector("[data-issue-kicker]");
+  const title = issueArticle.querySelector("[data-issue-title]");
+  const body = issueArticle.querySelector("[data-issue-body]");
+  kicker && (kicker.textContent = "Issue");
+  title && (title.textContent = titleText);
+  body && body.replaceChildren(...plainTextToParagraphs(bodyText));
+  renderIssueImage({});
+  renderIssueTags({});
+  renderIssueAuthor({});
+  renderIssueLike({});
+}
+
 function plainTextToParagraphs(text) {
   return String(text || "")
     .split(/\n{2,}/)
@@ -220,6 +299,64 @@ function plainTextToParagraphs(text) {
 loadIssueArticle();
 loadIssueList();
 setupIssueAdmin();
+
+function normalizeCurrentIssueUrl() {
+  if (window.location.pathname.endsWith("/issues/read")) {
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}.html${window.location.search}${window.location.hash}`
+    );
+  }
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
+function readCache(key) {
+  try {
+    const raw = window.localStorage.getItem(key);
+
+    if (!raw) {
+      return null;
+    }
+
+    const cached = JSON.parse(raw);
+
+    if (!cached?.savedAt || Date.now() - cached.savedAt > CACHE_MAX_AGE_MS) {
+      return null;
+    }
+
+    return cached.payload || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeCache(key, payload) {
+  try {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({
+        savedAt: Date.now(),
+        payload,
+      })
+    );
+  } catch (error) {}
+}
+
+function clearIssueCaches(slug) {
+  try {
+    window.localStorage.removeItem(ISSUE_LIST_CACHE_KEY);
+
+    if (slug) {
+      window.localStorage.removeItem(`${ISSUE_CACHE_PREFIX}${slug}`);
+    }
+  } catch (error) {}
+}
 
 function renderIssueImage(issue) {
   if (!issueArticle) {
@@ -452,6 +589,17 @@ function renderIssueList(payload) {
       return link;
     })
   );
+}
+
+function renderIssueListLoading(message) {
+  if (!issueList) {
+    return;
+  }
+
+  const loading = document.createElement("p");
+  loading.className = "article-empty";
+  loading.textContent = message;
+  issueList.replaceChildren(loading);
 }
 
 function getIssueReadHref(issue) {
@@ -710,6 +858,7 @@ function receiveAppsScriptMessage(event) {
   if (payload.status === "saved") {
     adminStatus.textContent = "已更新。";
     const adminForm = adminDialog.querySelector(".admin-form");
+    const previousSlug = currentIssue?.slug;
     currentIssue = {
       issue: adminForm.elements.issue.value,
       slug: adminForm.elements.slug.value,
@@ -725,6 +874,9 @@ function receiveAppsScriptMessage(event) {
       likes: payload.likes || currentIssue?.likes || 0,
       body: adminForm.elements.body.value,
     };
+    clearIssueCaches(previousSlug);
+    clearIssueCaches(currentIssue.slug);
+    writeCache(`${ISSUE_CACHE_PREFIX}${currentIssue.slug}`, { ok: true, issue: currentIssue });
     renderIssueArticle({ ok: true, issue: currentIssue });
     if (currentIssue.slug) {
       const url = new URL(window.location.href);
@@ -736,6 +888,7 @@ function receiveAppsScriptMessage(event) {
 
   if (payload.status === "deleted") {
     adminStatus.textContent = "已刪除。";
+    clearIssueCaches(currentIssue?.slug);
     renderMissingIssue();
     window.setTimeout(() => {
       adminDialog.close();
