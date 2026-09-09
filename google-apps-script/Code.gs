@@ -83,12 +83,18 @@ function subscribe_(params) {
         const currentStatus = String(rows[i][1] || "active").toLowerCase();
 
         if (currentStatus === "active") {
+          const token = rows[i][2] || Utilities.getUuid();
+          if (!rows[i][2]) {
+            sheet.getRange(rowNumber, 3).setValue(token);
+          }
+
           sheet.getRange(rowNumber, 5).setValue(now);
+          sendWelcomeEmail_(email, token);
 
           return {
             ok: true,
             status: "duplicate",
-            message: "Already subscribed.",
+            message: "Already subscribed. Welcome email sent again.",
           };
         }
 
@@ -161,14 +167,10 @@ function sendWelcomeEmail_(email, token) {
     '">退訂</a></p>' +
     "</div>";
 
-  try {
-    GmailApp.sendEmail(email, WELCOME_SUBJECT, body, {
-      name: WELCOME_SENDER_NAME,
-      htmlBody: htmlBody,
-    });
-  } catch (error) {
-    console.error("Welcome email failed: " + (error.message || error));
-  }
+  GmailApp.sendEmail(email, WELCOME_SUBJECT, body, {
+    name: WELCOME_SENDER_NAME,
+    htmlBody: htmlBody,
+  });
 }
 
 function unsubscribe_(token) {
@@ -233,6 +235,17 @@ function getActiveSubscribers() {
   }
 
   return subscribers;
+}
+
+function sendTestWelcomeEmail() {
+  const email = Session.getEffectiveUser().getEmail();
+
+  if (!email) {
+    throw new Error("Google 無法讀取目前帳號 Email。請改用網站表單測試。");
+  }
+
+  sendWelcomeEmail_(email, Utilities.getUuid());
+  return "Test welcome email sent to " + email;
 }
 
 function getSheet_() {
