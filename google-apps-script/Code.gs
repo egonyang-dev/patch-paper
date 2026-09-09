@@ -55,6 +55,11 @@ function doPost(e) {
       return iframeResponse_(result);
     }
 
+    if (action === "deleteissue") {
+      const result = deleteIssue_(params);
+      return iframeResponse_(result);
+    }
+
     return iframeResponse_({
       ok: false,
       status: "bad_request",
@@ -378,6 +383,45 @@ function saveIssue_(params) {
   }
 }
 
+function deleteIssue_(params) {
+  requireAdmin_(params.password);
+
+  const issueNumber = String(params.issue || "").trim();
+  const slug = String(params.slug || "").trim();
+
+  if (!issueNumber && !slug) {
+    throw new Error("請填 Issue 或 Slug。");
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+
+  try {
+    const sheet = getIssuesSheet_();
+    const rows = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < rows.length; i += 1) {
+      const rowIssue = String(rows[i][0] || "").trim();
+      const rowSlug = String(rows[i][2] || "").trim();
+
+      if ((slug && rowSlug === slug) || (issueNumber && rowIssue === issueNumber)) {
+        sheet.deleteRow(i + 1);
+
+        return {
+          ok: true,
+          status: "deleted",
+          message: "文章已刪除。",
+          slug: slug || rowSlug,
+        };
+      }
+    }
+
+    throw new Error("找不到這篇文章。");
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function setupPatchPaperManager() {
   getSheet_();
   getIssuesSheet_();
@@ -506,7 +550,7 @@ function getPublicIssue_(slug) {
     }
   }
 
-  return currentIssue;
+  return cleanSlug ? null : currentIssue;
 }
 
 function issueFromRow_(row, rowNumber) {

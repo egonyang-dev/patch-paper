@@ -573,7 +573,8 @@ h2 {
 
 .admin-close,
 .admin-cancel,
-.admin-save {
+.admin-save,
+.admin-delete {
   border: 1px solid var(--pink);
   background: transparent;
   color: var(--pink);
@@ -642,9 +643,15 @@ h2 {
 }
 
 .admin-cancel,
-.admin-save {
+.admin-save,
+.admin-delete {
   min-height: 42px;
   padding: 8px 16px;
+}
+
+.admin-delete {
+  margin-right: auto;
+  color: var(--pink);
 }
 
 .admin-save {
@@ -653,7 +660,8 @@ h2 {
   color: var(--background);
 }
 
-.admin-save:disabled {
+.admin-save:disabled,
+.admin-delete:disabled {
   opacity: 0.5;
   cursor: wait;
 }
@@ -722,8 +730,13 @@ h2 {
   }
 
   .admin-cancel,
-  .admin-save {
+  .admin-save,
+  .admin-delete {
     flex: 1 1 0;
+  }
+
+  .admin-delete {
+    margin-right: 0;
   }
 }
 

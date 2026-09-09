@@ -10,6 +10,7 @@ let currentIssue = null;
 let adminDialog = null;
 let adminStatus = null;
 let adminSaveButton = null;
+let adminDeleteButton = null;
 
 function setStatus(message, isError = false) {
   statusText.textContent = message;
@@ -145,6 +146,7 @@ function loadIssueList() {
 
 function renderIssueArticle(payload) {
   if (!payload || !payload.ok || !payload.issue) {
+    renderMissingIssue();
     return;
   }
 
@@ -172,6 +174,22 @@ function renderIssueArticle(payload) {
 
   renderIssueImage(issue);
   renderIssueTags(issue);
+}
+
+function renderMissingIssue() {
+  if (!issueArticle) {
+    return;
+  }
+
+  currentIssue = null;
+  const kicker = issueArticle.querySelector("[data-issue-kicker]");
+  const title = issueArticle.querySelector("[data-issue-title]");
+  const body = issueArticle.querySelector("[data-issue-body]");
+  kicker && (kicker.textContent = "Issue");
+  title && (title.textContent = "文章不存在或已刪除。");
+  body && body.replaceChildren();
+  renderIssueImage({});
+  renderIssueTags({});
 }
 
 function plainTextToParagraphs(text) {
@@ -379,6 +397,7 @@ function setupIssueAdmin() {
       <p class="admin-status" role="status" aria-live="polite"></p>
 
       <div class="admin-actions">
+        <button type="button" class="admin-delete">刪除文章</button>
         <button type="button" class="admin-cancel">取消</button>
         <button type="submit" class="admin-save">更新文章</button>
       </div>
@@ -389,6 +408,7 @@ function setupIssueAdmin() {
   const adminForm = adminDialog.querySelector(".admin-form");
   adminStatus = adminDialog.querySelector(".admin-status");
   adminSaveButton = adminDialog.querySelector(".admin-save");
+  adminDeleteButton = adminDialog.querySelector(".admin-delete");
 
   button.addEventListener("click", () => {
     fillAdminForm(adminForm);
@@ -405,28 +425,66 @@ function setupIssueAdmin() {
     adminDialog.close();
   });
 
-  adminForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    if (!isConfigured()) {
-      adminStatus.textContent = "請先填入 Apps Script URL。";
+  adminDeleteButton.addEventListener("click", () => {
+    if (!adminForm.elements.password.value.trim()) {
+      adminStatus.textContent = "請先輸入管理密碼。";
+      adminForm.elements.password.focus();
       return;
     }
 
-    adminForm.action = APPS_SCRIPT_URL;
-    adminSaveButton.disabled = true;
-    adminStatus.textContent = adminForm.elements.sendNewsletter.checked
-      ? "更新中，等一下會寄出。"
-      : "更新中。";
-
-    try {
-      await prepareImageFields(adminForm);
-      HTMLFormElement.prototype.submit.call(adminForm);
-    } catch (error) {
-      adminSaveButton.disabled = false;
-      adminStatus.textContent = error.message || "圖片讀取失敗。";
+    if (!window.confirm("確定要刪除這篇文章嗎？")) {
+      return;
     }
+
+    submitAdminForm(adminForm, "deleteIssue");
   });
+
+  adminForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    submitAdminForm(adminForm, "saveIssue");
+  });
+}
+
+function submitAdminForm(adminForm, action) {
+  if (!isConfigured()) {
+    adminStatus.textContent = "請先填入 Apps Script URL。";
+    return;
+  }
+
+  adminForm.elements.action.value = action;
+  adminForm.setAttribute("action", APPS_SCRIPT_URL);
+  setAdminButtonsDisabled(true);
+
+  if (action === "deleteIssue") {
+    adminStatus.textContent = "刪除中。";
+    adminForm.elements.imageData.value = "";
+    adminForm.elements.imageName.value = "";
+    HTMLFormElement.prototype.submit.call(adminForm);
+    return;
+  }
+
+  adminStatus.textContent = adminForm.elements.sendNewsletter.checked
+    ? "更新中，等一下會寄出。"
+    : "更新中。";
+
+  prepareImageFields(adminForm)
+    .then(() => {
+      HTMLFormElement.prototype.submit.call(adminForm);
+    })
+    .catch((error) => {
+      setAdminButtonsDisabled(false);
+      adminStatus.textContent = error.message || "圖片讀取失敗。";
+    });
+}
+
+function setAdminButtonsDisabled(disabled) {
+  if (adminSaveButton) {
+    adminSaveButton.disabled = disabled;
+  }
+
+  if (adminDeleteButton) {
+    adminDeleteButton.disabled = disabled;
+  }
 }
 
 function fillAdminForm(adminForm) {
@@ -455,7 +513,7 @@ function receiveAppsScriptMessage(event) {
   }
 
   if (adminSaveButton) {
-    adminSaveButton.disabled = false;
+    setAdminButtonsDisabled(false);
   }
 
   if (!adminStatus) {
@@ -487,6 +545,15 @@ function receiveAppsScriptMessage(event) {
       window.history.replaceState({}, "", url);
     }
     window.setTimeout(() => adminDialog.close(), 1000);
+  }
+
+  if (payload.status === "deleted") {
+    adminStatus.textContent = "已刪除。";
+    renderMissingIssue();
+    window.setTimeout(() => {
+      adminDialog.close();
+      window.location.href = "./index.html";
+    }, 700);
   }
 }
 

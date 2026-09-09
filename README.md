@@ -46,6 +46,8 @@ const ADMIN_PASSWORD = "你的管理密碼";
 
 鉛筆編輯器也可以上傳圖片、填 `#分類`，並勾選是否要立刻寄給所有訂閱者。圖片會存到 Google Drive，Google Sheet 只記圖片網址。
 
+鉛筆編輯器裡也有「刪除文章」。輸入管理密碼後按刪除，確認一次，就會從 Google Sheet 移除該篇文章。
+
 ## 更新文章
 
 文章內容放在 Google Sheet 的 `issues` 工作表。第一次設定時，到 Apps Script 執行：
