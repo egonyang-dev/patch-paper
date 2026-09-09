@@ -240,8 +240,8 @@ function renderIssueImage(issue) {
     const image = document.createElement("img");
     image.alt = "";
     figure.append(image);
-    const title = issueArticle.querySelector("[data-issue-title]");
-    title?.insertAdjacentElement("afterend", figure);
+    const kicker = issueArticle.querySelector("[data-issue-kicker]");
+    kicker?.insertAdjacentElement("afterend", figure);
   }
 
   const image = figure.querySelector("img");
