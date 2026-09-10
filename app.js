@@ -19,6 +19,16 @@ let feedbackDialog = null;
 let feedbackStatus = null;
 let feedbackButton = null;
 let feedbackSubmitButton = null;
+let commentsSection = null;
+let commentsList = null;
+let commentsForm = null;
+let commentsStatus = null;
+let commentsSubmitButton = null;
+let adminGateDialog = null;
+let adminGateStatus = null;
+let adminGateSubmitButton = null;
+let adminGatePassword = "";
+let pendingAdminForm = null;
 
 function setStatus(message, isError = false) {
   statusText.textContent = message;
@@ -244,6 +254,7 @@ function renderIssueArticle(payload) {
   renderIssueAuthor(issue);
   renderIssueLike(issue);
   renderIssueFeedback(issue);
+  renderIssueComments(issue);
 }
 
 function renderMissingIssue() {
@@ -264,6 +275,7 @@ function renderMissingIssue() {
   renderIssueAuthor({});
   renderIssueLike({});
   renderIssueFeedback({});
+  renderIssueComments({});
 }
 
 function renderIssueLoading(titleText, bodyText) {
@@ -284,6 +296,7 @@ function renderIssueLoading(titleText, bodyText) {
   renderIssueAuthor({});
   renderIssueLike({});
   renderIssueFeedback({});
+  renderIssueComments({});
 }
 
 function plainTextToParagraphs(text) {
@@ -307,6 +320,7 @@ loadIssueArticle();
 loadIssueList();
 setupIssueAdmin();
 setupIssueFeedback();
+setupIssueComments();
 
 function normalizeCurrentIssueUrl() {
   if (window.location.pathname.endsWith("/issues/read")) {
@@ -580,7 +594,7 @@ function renderIssueFeedback(issue) {
     feedbackButton = document.createElement("button");
     feedbackButton.className = "article-feedback-button";
     feedbackButton.type = "button";
-    feedbackButton.textContent = "秘密告白信 / 建設信";
+    feedbackButton.textContent = "給予作者回饋～";
     feedbackButton.addEventListener("click", openFeedbackDialog);
   }
 
@@ -633,16 +647,16 @@ function setupIssueFeedback() {
       <input type="hidden" name="userAgent" value="" />
 
       <div class="feedback-head">
-        <p>秘密回饋信</p>
+        <p>給予作者回饋～</p>
         <button type="button" class="feedback-close" aria-label="關閉">×</button>
       </div>
 
       <label>
         這封信是
         <select name="feedbackType">
-          <option value="秘密告白">秘密告白</option>
-          <option value="建設信">建設信</option>
+          <option value="給予作者回饋">給予作者回饋～</option>
           <option value="愛的回饋">愛的回饋</option>
+          <option value="建設信">建設信</option>
         </select>
       </label>
 
@@ -710,7 +724,7 @@ function fillFeedbackForm(feedbackForm) {
   feedbackForm.elements.title.value = issue.title || "";
   feedbackForm.elements.url.value = window.location.href;
   feedbackForm.elements.userAgent.value = navigator.userAgent || "";
-  feedbackForm.elements.feedbackType.value = "秘密告白";
+  feedbackForm.elements.feedbackType.value = "給予作者回饋";
   feedbackForm.elements.message.value = "";
   feedbackForm.elements.name.value = "";
   feedbackForm.elements.email.value = "";
@@ -750,6 +764,217 @@ function handleFeedbackResponse(payload) {
 
   feedbackStatus.textContent = "收到了。謝謝你把信放在這裡♫♪♩♪♩";
   window.setTimeout(() => feedbackDialog?.close(), 1200);
+}
+
+function setupIssueComments() {
+  if (!issueArticle) {
+    return;
+  }
+
+  const iframeName = "patchPaperCommentFrame";
+  const frame = document.createElement("iframe");
+  frame.className = "hidden-frame";
+  frame.name = iframeName;
+  frame.title = "留言送出狀態";
+  document.body.append(frame);
+}
+
+function renderIssueComments(issue) {
+  if (!issueArticle) {
+    return;
+  }
+
+  if (!issue.slug) {
+    commentsSection?.remove();
+    commentsSection = null;
+    commentsList = null;
+    commentsForm = null;
+    commentsStatus = null;
+    commentsSubmitButton = null;
+    return;
+  }
+
+  if (!commentsSection) {
+    commentsSection = document.createElement("section");
+    commentsSection.className = "comments-section";
+    commentsSection.dataset.issueComments = "";
+    commentsSection.innerHTML = `
+      <div class="comments-head">
+        <p>公開留言討論區</p>
+        <span>給建設性的愛的回饋</span>
+      </div>
+
+      <div class="comments-list" aria-live="polite"></div>
+
+      <form class="comments-form" method="post" target="patchPaperCommentFrame">
+        <input type="hidden" name="action" value="comment" />
+        <input type="hidden" name="returnMode" value="iframe" />
+        <input type="hidden" name="issue" value="" />
+        <input type="hidden" name="slug" value="" />
+        <input type="hidden" name="title" value="" />
+        <input type="hidden" name="url" value="" />
+        <input type="hidden" name="userAgent" value="" />
+
+        <label>
+          名字
+          <input name="name" type="text" placeholder="可留空" />
+        </label>
+
+        <label>
+          留言
+          <textarea name="message" rows="4" placeholder="會公開顯示。請友善一點。" required></textarea>
+        </label>
+
+        <div class="comments-actions">
+          <p class="comments-status" role="status" aria-live="polite"></p>
+          <button type="submit" class="comments-submit">公開送出 ♫</button>
+        </div>
+      </form>
+    `;
+    issueArticle.append(commentsSection);
+    commentsList = commentsSection.querySelector(".comments-list");
+    commentsForm = commentsSection.querySelector(".comments-form");
+    commentsStatus = commentsSection.querySelector(".comments-status");
+    commentsSubmitButton = commentsSection.querySelector(".comments-submit");
+    commentsForm.addEventListener("submit", submitCommentForm);
+  }
+
+  commentsForm.elements.issue.value = issue.issue || "";
+  commentsForm.elements.slug.value = issue.slug || "";
+  commentsForm.elements.title.value = issue.title || "";
+  commentsForm.elements.url.value = window.location.href;
+  commentsForm.elements.userAgent.value = navigator.userAgent || "";
+  commentsStatus.textContent = "";
+  renderCommentsLoading("等一下下♫♪♩♪♩");
+  loadIssueComments(issue.slug);
+}
+
+function loadIssueComments(slug) {
+  if (!commentsList || !isConfigured()) {
+    renderCommentsLoading("等一下下♫♪♩♪♩");
+    return;
+  }
+
+  const callbackName = `patchPaperComments${Date.now()}`;
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "comments");
+  url.searchParams.set("slug", slug);
+  url.searchParams.set("callback", callbackName);
+
+  const script = document.createElement("script");
+  const cleanup = () => {
+    delete window[callbackName];
+    script.remove();
+  };
+
+  window[callbackName] = (payload) => {
+    renderComments(payload);
+    cleanup();
+  };
+
+  script.src = url.toString();
+  script.onerror = () => {
+    renderCommentsLoading("留言晚一點再讀取。");
+    cleanup();
+  };
+  document.head.append(script);
+}
+
+function renderComments(payload) {
+  if (!commentsList) {
+    return;
+  }
+
+  if (!payload?.ok || !Array.isArray(payload.comments)) {
+    renderCommentsLoading("留言晚一點再讀取。");
+    return;
+  }
+
+  if (!payload.comments.length) {
+    renderCommentsLoading("目前還沒有人留言。");
+    return;
+  }
+
+  commentsList.replaceChildren(
+    ...payload.comments.map((comment) => {
+      const item = document.createElement("article");
+      item.className = "comment-item";
+
+      const meta = document.createElement("p");
+      meta.className = "comment-meta";
+      meta.textContent = [comment.name || "匿名", comment.createdDate].filter(Boolean).join(" / ");
+
+      const message = document.createElement("div");
+      message.className = "comment-message";
+      message.replaceChildren(...plainTextToParagraphs(comment.message || ""));
+
+      item.append(meta, message);
+      return item;
+    })
+  );
+}
+
+function renderCommentsLoading(message) {
+  if (!commentsList) {
+    return;
+  }
+
+  const empty = document.createElement("p");
+  empty.className = "comments-empty";
+  empty.textContent = message;
+  commentsList.replaceChildren(empty);
+}
+
+function submitCommentForm(event) {
+  event.preventDefault();
+
+  if (!commentsForm || !commentsStatus) {
+    return;
+  }
+
+  if (!isConfigured()) {
+    commentsStatus.textContent = "等一下下♫♪♩♪♩";
+    return;
+  }
+
+  if (!commentsForm.elements.message.value.trim()) {
+    commentsStatus.textContent = "留言還是空的。";
+    commentsForm.elements.message.focus();
+    return;
+  }
+
+  commentsForm.elements.url.value = window.location.href;
+  commentsForm.elements.userAgent.value = navigator.userAgent || "";
+  commentsForm.setAttribute("action", APPS_SCRIPT_URL);
+  commentsSubmitButton.disabled = true;
+  commentsStatus.textContent = "送出中。";
+  HTMLFormElement.prototype.submit.call(commentsForm);
+}
+
+function handleCommentResponse(payload) {
+  if (!commentsStatus || !commentsForm) {
+    return;
+  }
+
+  if (commentsSubmitButton) {
+    commentsSubmitButton.disabled = false;
+  }
+
+  if (!payload.ok) {
+    commentsStatus.textContent = payload.message || "留言送出失敗。";
+    return;
+  }
+
+  const issue = currentIssue || {};
+  commentsStatus.textContent = "留言已送出。";
+  commentsForm.elements.name.value = "";
+  commentsForm.elements.message.value = "";
+  commentsForm.elements.issue.value = issue.issue || "";
+  commentsForm.elements.slug.value = issue.slug || "";
+  commentsForm.elements.title.value = issue.title || "";
+  commentsForm.elements.url.value = window.location.href;
+  commentsForm.elements.userAgent.value = navigator.userAgent || "";
+  loadIssueComments(payload.slug || issue.slug);
 }
 
 function renderIssueList(payload) {
@@ -836,16 +1061,12 @@ function setupIssueAdmin() {
       <input type="hidden" name="returnMode" value="iframe" />
       <input type="hidden" name="imageData" value="" />
       <input type="hidden" name="imageName" value="" />
+      <input type="hidden" name="password" value="" />
 
       <div class="admin-head">
         <p>PATCH PAPER editor</p>
         <button type="button" class="admin-close" aria-label="關閉">×</button>
       </div>
-
-      <label>
-        密碼
-        <input name="password" type="password" autocomplete="current-password" required />
-      </label>
 
       <div class="admin-grid">
         <label>
@@ -927,6 +1148,7 @@ function setupIssueAdmin() {
     </form>
   `;
   document.body.append(adminDialog);
+  setupAdminGate(iframeName);
 
   const adminForm = adminDialog.querySelector(".admin-form");
   adminStatus = adminDialog.querySelector(".admin-status");
@@ -934,10 +1156,8 @@ function setupIssueAdmin() {
   adminDeleteButton = adminDialog.querySelector(".admin-delete");
 
   button.addEventListener("click", () => {
-    fillAdminForm(adminForm);
-    adminStatus.textContent = "";
-    adminDialog.showModal();
-    adminForm.elements.password.focus();
+    pendingAdminForm = adminForm;
+    openAdminGate();
   });
 
   adminDialog.querySelector(".admin-close").addEventListener("click", () => {
@@ -950,8 +1170,9 @@ function setupIssueAdmin() {
 
   adminDeleteButton.addEventListener("click", () => {
     if (!adminForm.elements.password.value.trim()) {
-      adminStatus.textContent = "請先輸入管理密碼。";
-      adminForm.elements.password.focus();
+      adminDialog.close();
+      pendingAdminForm = adminForm;
+      openAdminGate();
       return;
     }
 
@@ -966,6 +1187,111 @@ function setupIssueAdmin() {
     event.preventDefault();
     submitAdminForm(adminForm, "saveIssue");
   });
+}
+
+function setupAdminGate(iframeName) {
+  adminGateDialog = document.createElement("dialog");
+  adminGateDialog.className = "admin-dialog admin-gate-dialog";
+  adminGateDialog.innerHTML = `
+    <form class="admin-gate-form" method="post" target="${iframeName}">
+      <input type="hidden" name="action" value="verifyAdmin" />
+      <input type="hidden" name="returnMode" value="iframe" />
+
+      <div class="admin-head">
+        <p>管理密碼</p>
+        <button type="button" class="admin-close" aria-label="關閉">×</button>
+      </div>
+
+      <label>
+        密碼
+        <input name="password" type="password" autocomplete="current-password" required />
+      </label>
+
+      <p class="admin-gate-status" role="status" aria-live="polite"></p>
+
+      <div class="admin-actions">
+        <button type="button" class="admin-cancel">取消</button>
+        <button type="submit" class="admin-save">確認</button>
+      </div>
+    </form>
+  `;
+  document.body.append(adminGateDialog);
+
+  const formElement = adminGateDialog.querySelector(".admin-gate-form");
+  adminGateStatus = adminGateDialog.querySelector(".admin-gate-status");
+  adminGateSubmitButton = adminGateDialog.querySelector(".admin-save");
+
+  adminGateDialog.querySelector(".admin-close").addEventListener("click", () => {
+    adminGateDialog.close();
+  });
+
+  adminGateDialog.querySelector(".admin-cancel").addEventListener("click", () => {
+    adminGateDialog.close();
+  });
+
+  formElement.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitAdminGate(formElement);
+  });
+}
+
+function openAdminGate() {
+  if (!adminGateDialog) {
+    return;
+  }
+
+  const formElement = adminGateDialog.querySelector(".admin-gate-form");
+  formElement.elements.password.value = "";
+  adminGateStatus.textContent = "";
+  adminGateDialog.showModal();
+  formElement.elements.password.focus();
+}
+
+function submitAdminGate(formElement) {
+  if (!isConfigured()) {
+    adminGateStatus.textContent = "等一下下♫♪♩♪♩";
+    return;
+  }
+
+  if (!formElement.elements.password.value.trim()) {
+    adminGateStatus.textContent = "請輸入管理密碼。";
+    formElement.elements.password.focus();
+    return;
+  }
+
+  formElement.setAttribute("action", APPS_SCRIPT_URL);
+  adminGateSubmitButton.disabled = true;
+  adminGateStatus.textContent = "確認中。";
+  HTMLFormElement.prototype.submit.call(formElement);
+}
+
+function handleAdminGateResponse(payload) {
+  if (adminGateSubmitButton) {
+    adminGateSubmitButton.disabled = false;
+  }
+
+  if (!adminGateStatus) {
+    return;
+  }
+
+  if (!payload.ok || payload.status !== "admin_verified") {
+    adminGateStatus.textContent = payload.message || "管理密碼錯誤。";
+    return;
+  }
+
+  const formElement = adminGateDialog.querySelector(".admin-gate-form");
+  adminGatePassword = formElement.elements.password.value;
+  adminGateDialog.close();
+
+  if (!pendingAdminForm) {
+    return;
+  }
+
+  fillAdminForm(pendingAdminForm);
+  pendingAdminForm.elements.password.value = adminGatePassword;
+  adminStatus.textContent = "";
+  adminDialog.showModal();
+  pendingAdminForm.elements.title.focus();
 }
 
 function submitAdminForm(adminForm, action) {
@@ -1027,6 +1353,7 @@ function fillAdminForm(adminForm) {
   adminForm.elements.imageFile.value = "";
   adminForm.elements.imageData.value = "";
   adminForm.elements.imageName.value = "";
+  adminForm.elements.password.value = adminGatePassword;
   adminForm.elements.tags.value = issue.tags || "";
   adminForm.elements.body.value = issue.body || "";
   adminForm.elements.sendNewsletter.checked = false;
@@ -1036,6 +1363,16 @@ function receiveAppsScriptMessage(event) {
   const payload = event.data || {};
 
   if (payload.source !== "patch-paper-subscription") {
+    return;
+  }
+
+  if (payload.status === "comment_saved" || commentsSubmitButton?.disabled) {
+    handleCommentResponse(payload);
+    return;
+  }
+
+  if (adminGateDialog?.open) {
+    handleAdminGateResponse(payload);
     return;
   }
 

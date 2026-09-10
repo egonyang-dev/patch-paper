@@ -9,6 +9,7 @@ const ARTICLES_URL = "https://patch-paper.patchpaper-tw.workers.dev/issues/";
 const IMAGE_FOLDER_NAME = "PATCH PAPER issue images";
 const ISSUE_SHEET_NAME = "issues";
 const FEEDBACK_SHEET_NAME = "feedback";
+const COMMENT_SHEET_NAME = "comments";
 const ISSUE_HEADERS = [
   "issue",
   "title",
@@ -35,6 +36,17 @@ const FEEDBACK_HEADERS = [
   "message",
   "name",
   "email",
+  "url",
+  "userAgent",
+];
+const COMMENT_HEADERS = [
+  "createdAt",
+  "issue",
+  "slug",
+  "title",
+  "name",
+  "message",
+  "status",
   "url",
   "userAgent",
 ];
@@ -79,8 +91,18 @@ function doPost(e) {
       return iframeResponse_(result);
     }
 
+    if (action === "verifyadmin") {
+      const result = verifyAdmin_(params);
+      return iframeResponse_(result);
+    }
+
     if (action === "feedback") {
       const result = saveFeedback_(params);
+      return iframeResponse_(result);
+    }
+
+    if (action === "comment") {
+      const result = saveComment_(params);
       return iframeResponse_(result);
     }
 
@@ -112,6 +134,10 @@ function doGet(e) {
 
   if (action === "like") {
     return likeIssueResponse_(params);
+  }
+
+  if (action === "comments") {
+    return commentsResponse_(params);
   }
 
   if (action === "unsubscribe") {
@@ -528,10 +554,21 @@ function likeIssue_(slug) {
   }
 }
 
+function verifyAdmin_(params) {
+  requireAdmin_(params.password);
+
+  return {
+    ok: true,
+    status: "admin_verified",
+    message: "密碼確認。",
+  };
+}
+
 function setupPatchPaperManager() {
   getSheet_();
   getIssuesSheet_();
   getFeedbackSheet_();
+  getCommentsSheet_();
   return "PATCH PAPER 管理表格已建立。到 issues 工作表貼文章，status 填 current。";
 }
 
@@ -539,6 +576,7 @@ function authorizePatchPaper() {
   getSheet_();
   getIssuesSheet_();
   getFeedbackSheet_();
+  getCommentsSheet_();
   getImageFolder_();
   return "PATCH PAPER 已取得圖片上傳需要的 Google Drive 權限。";
 }
@@ -576,6 +614,110 @@ function saveFeedback_(params) {
     status: "feedback_saved",
     message: "收到了。謝謝你把信放在這裡♫♪♩♪♩",
   };
+}
+
+function saveComment_(params) {
+  const slug = String(params.slug || "").trim();
+  const message = trimText_(params.message, 1200);
+
+  if (!slug) {
+    return {
+      ok: false,
+      status: "missing_slug",
+      message: "找不到文章。",
+    };
+  }
+
+  if (!message) {
+    return {
+      ok: false,
+      status: "missing_message",
+      message: "留言還是空的。",
+    };
+  }
+
+  const issue = getPublicIssue_(slug);
+
+  if (!issue) {
+    return {
+      ok: false,
+      status: "missing_issue",
+      message: "找不到文章。",
+    };
+  }
+
+  const sheet = getCommentsSheet_();
+  const name = trimText_(params.name, 80) || "匿名";
+
+  sheet.appendRow([
+    new Date(),
+    String(params.issue || issue.issue || "").trim(),
+    slug,
+    String(params.title || issue.title || "").trim(),
+    name,
+    message,
+    "visible",
+    String(params.url || "").trim(),
+    String(params.userAgent || "").trim(),
+  ]);
+
+  return {
+    ok: true,
+    status: "comment_saved",
+    message: "留言已送出。",
+    slug: slug,
+  };
+}
+
+function commentsResponse_(params) {
+  const callback = String(params.callback || "").trim();
+  const slug = String(params.slug || "").trim();
+  const payload = {
+    ok: true,
+    slug: slug,
+    comments: getPublicComments_(slug),
+  };
+
+  if (callback) {
+    if (!isValidCallback_(callback)) {
+      return ContentService.createTextOutput("Bad callback.")
+        .setMimeType(ContentService.MimeType.TEXT);
+    }
+
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(payload) + ");")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return ContentService.createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getPublicComments_(slug) {
+  if (!slug) {
+    return [];
+  }
+
+  const sheet = getCommentsSheet_();
+  const rows = sheet.getDataRange().getValues();
+  const comments = [];
+
+  for (let i = 1; i < rows.length; i += 1) {
+    const rowSlug = String(rows[i][2] || "").trim();
+    const status = String(rows[i][6] || "visible").trim().toLowerCase();
+
+    if (rowSlug !== slug || status !== "visible") {
+      continue;
+    }
+
+    comments.push({
+      createdAt: rows[i][0],
+      createdDate: formatDate_(rows[i][0]),
+      name: String(rows[i][4] || "匿名").trim(),
+      message: String(rows[i][5] || "").trim(),
+    });
+  }
+
+  return comments.slice(-80);
 }
 
 function sendTestWelcomeEmail() {
@@ -941,6 +1083,28 @@ function getFeedbackSheet_() {
   return sheet;
 }
 
+function getCommentsSheet_() {
+  const spreadsheet = getSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(COMMENT_SHEET_NAME);
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(COMMENT_SHEET_NAME);
+  }
+
+  const firstRow = sheet.getRange(1, 1, 1, COMMENT_HEADERS.length).getValues()[0];
+  const hasHeaders = firstRow.join("") !== "";
+
+  if (!hasHeaders) {
+    sheet.getRange(1, 1, 1, COMMENT_HEADERS.length).setValues([COMMENT_HEADERS]);
+    sheet.setFrozenRows(1);
+  } else {
+    sheet.getRange(1, 1, 1, COMMENT_HEADERS.length).setValues([COMMENT_HEADERS]);
+  }
+
+  sheet.autoResizeColumns(1, COMMENT_HEADERS.length);
+  return sheet;
+}
+
 function saveIssueImage_(params) {
   const imageData = String(params.imageData || "").trim();
 
@@ -985,6 +1149,20 @@ function normalizeTags_(value) {
     })
     .filter(Boolean)
     .join(" ");
+}
+
+function trimText_(value, maxLength) {
+  const text = String(value || "").trim();
+
+  if (!maxLength || text.length <= maxLength) {
+    return text;
+  }
+
+  return text.slice(0, maxLength).trim();
+}
+
+function isValidCallback_(callback) {
+  return /^[A-Za-z_$][0-9A-Za-z_$]*(\.[A-Za-z_$][0-9A-Za-z_$]*)*$/.test(callback);
 }
 
 function getSheet_() {

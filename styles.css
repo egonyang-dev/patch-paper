@@ -658,7 +658,7 @@ h2 {
 .admin-edit-button {
   display: block;
   width: fit-content;
-  margin: clamp(12px, 4vw, 42px) 0 clamp(52px, 9vw, 104px) auto;
+  margin: clamp(90px, 16vw, 190px) 0 clamp(18px, 5vw, 56px) auto;
   padding: 0;
   border: 0;
   background: transparent;
@@ -675,8 +675,126 @@ h2 {
   outline: 0;
 }
 
+.comments-section {
+  margin-top: clamp(54px, 8vw, 96px);
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.comments-head {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.comments-head p,
+.comments-head span {
+  margin: 0;
+}
+
+.comments-head p {
+  color: var(--blue);
+  font-size: clamp(24px, 4vw, 44px);
+}
+
+.comments-head span {
+  color: var(--pink);
+  font-size: clamp(15px, 2vw, 20px);
+}
+
+.comments-list {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.comment-item {
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.comment-meta {
+  margin: 0 0 8px;
+  color: var(--pink);
+  font-size: 14px;
+}
+
+.comment-message p,
+.comments-empty {
+  margin: 0;
+  color: var(--blue);
+  font-size: clamp(18px, 2.5vw, 28px);
+  line-height: 1.6;
+}
+
+.comment-message p + p {
+  margin-top: 0.75em;
+}
+
+.comments-form {
+  display: grid;
+  gap: 16px;
+}
+
+.comments-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--pink);
+  font-size: 13px;
+}
+
+.comments-form input,
+.comments-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #fff;
+  color: var(--blue);
+  font: inherit;
+  font-size: 17px;
+  line-height: 1.45;
+  padding: 11px 12px;
+}
+
+.comments-form textarea {
+  resize: vertical;
+}
+
+.comments-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comments-status {
+  min-height: 23px;
+  margin: 0;
+  color: var(--pink);
+  font-size: 14px;
+}
+
+.comments-submit {
+  min-height: 42px;
+  border: 1px solid var(--blue);
+  background: var(--blue);
+  color: var(--background);
+  font: inherit;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.comments-submit:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
 .admin-dialog,
-.feedback-dialog {
+.feedback-dialog,
+.admin-gate-dialog {
   width: min(680px, calc(100% - 28px));
   max-height: min(820px, calc(100% - 28px));
   padding: 0;
@@ -687,12 +805,14 @@ h2 {
 }
 
 .admin-dialog::backdrop,
-.feedback-dialog::backdrop {
+.feedback-dialog::backdrop,
+.admin-gate-dialog::backdrop {
   background: rgba(23, 78, 166, 0.18);
 }
 
 .admin-form,
-.feedback-form {
+.feedback-form,
+.admin-gate-form {
   display: grid;
   gap: 16px;
   padding: clamp(18px, 4vw, 32px);
@@ -727,7 +847,8 @@ h2 {
 .admin-delete,
 .feedback-close,
 .feedback-cancel,
-.feedback-submit {
+.feedback-submit,
+.admin-gate-form button {
   border: 1px solid var(--pink);
   background: transparent;
   color: var(--pink);
@@ -745,7 +866,8 @@ h2 {
 }
 
 .admin-form label,
-.feedback-form label {
+.feedback-form label,
+.admin-gate-form label {
   display: grid;
   gap: 7px;
   color: var(--pink);
@@ -756,7 +878,8 @@ h2 {
 .admin-form textarea,
 .feedback-form input,
 .feedback-form select,
-.feedback-form textarea {
+.feedback-form textarea,
+.admin-gate-form input {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
@@ -841,7 +964,8 @@ h2 {
 }
 
 .admin-status,
-.feedback-status {
+.feedback-status,
+.admin-gate-status {
   min-height: 23px;
   margin: 0;
   color: var(--pink);
@@ -904,6 +1028,12 @@ h2 {
     flex-direction: column;
   }
 
+  .comments-head,
+  .comments-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .article-row {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -914,7 +1044,8 @@ h2 {
   }
 
   .admin-actions,
-  .feedback-actions {
+  .feedback-actions,
+  .comments-actions {
     justify-content: stretch;
   }
 
@@ -922,7 +1053,8 @@ h2 {
   .admin-save,
   .admin-delete,
   .feedback-cancel,
-  .feedback-submit {
+  .feedback-submit,
+  .comments-submit {
     flex: 1 1 0;
   }
 
