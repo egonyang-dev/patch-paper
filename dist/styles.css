@@ -520,40 +520,57 @@ h2 {
 .loading-cat {
   color: var(--blue);
   font-size: clamp(24px, 7vw, 38px);
-  animation: cat-chase 2.8s ease-in-out infinite;
+  animation: cat-chase 3.2s steps(1, end) infinite;
 }
 
 .loading-butterfly {
   color: var(--pink);
   font-size: clamp(20px, 6vw, 32px);
-  animation: butterfly-float 2.8s ease-in-out infinite;
+  animation: butterfly-float 3.2s steps(1, end) infinite;
 }
 
 @keyframes cat-chase {
-  0% {
-    transform: translate3d(0, 4px, 0);
+  0%,
+  16% {
+    transform: translate3d(0, 6px, 0);
   }
 
-  45% {
-    transform: translate3d(min(210px, 52vw), 0, 0);
+  32%,
+  48% {
+    transform: translate3d(min(74px, 18vw), 3px, 0);
+  }
+
+  64%,
+  80% {
+    transform: translate3d(min(148px, 36vw), 6px, 0);
   }
 
   100% {
-    transform: translate3d(0, 4px, 0);
+    transform: translate3d(0, 6px, 0);
   }
 }
 
 @keyframes butterfly-float {
   0% {
-    transform: translate3d(min(110px, 27vw), -8px, 0) rotate(-7deg);
+    transform: translate3d(min(90px, 22vw), -8px, 0) rotate(-7deg);
   }
 
-  45% {
-    transform: translate3d(min(285px, 70vw), -22px, 0) rotate(9deg);
+  16%,
+  32% {
+    transform: translate3d(min(164px, 40vw), -18px, 0) rotate(8deg);
+  }
+
+  48%,
+  64% {
+    transform: translate3d(min(238px, 58vw), -8px, 0) rotate(-5deg);
+  }
+
+  80% {
+    transform: translate3d(min(312px, 74vw), -18px, 0) rotate(9deg);
   }
 
   100% {
-    transform: translate3d(min(110px, 27vw), -8px, 0) rotate(-7deg);
+    transform: translate3d(min(90px, 22vw), -8px, 0) rotate(-7deg);
   }
 }
 
