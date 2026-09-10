@@ -36,6 +36,8 @@ const FEEDBACK_HEADERS = [
   "message",
   "name",
   "email",
+  "author",
+  "authorEmail",
   "url",
   "userAgent",
 ];
@@ -582,7 +584,10 @@ function authorizePatchPaper() {
 }
 
 function saveFeedback_(params) {
-  const message = String(params.message || "").trim();
+  const feedbackType = String(params.feedbackType || "交朋友").trim();
+  const email = normalizeEmail_(params.email);
+  const isFriendRequest = feedbackType === "交朋友";
+  const message = String(params.message || "").trim() || (isFriendRequest ? "想和作者交朋友。" : "");
 
   if (!message) {
     return {
@@ -592,9 +597,17 @@ function saveFeedback_(params) {
     };
   }
 
+  if (isFriendRequest && !isValidEmail_(email)) {
+    return {
+      ok: false,
+      status: "invalid_email",
+      message: "請留下可以聯絡你的 Email。",
+    };
+  }
+
   const sheet = getFeedbackSheet_();
-  const email = normalizeEmail_(params.email);
-  const feedbackType = String(params.feedbackType || "秘密告白").trim();
+  const author = String(params.author || "").trim();
+  const authorEmail = normalizeEmail_(params.authorEmail);
 
   sheet.appendRow([
     new Date(),
@@ -605,15 +618,66 @@ function saveFeedback_(params) {
     message,
     String(params.name || "").trim(),
     email,
+    author,
+    authorEmail,
     String(params.url || "").trim(),
     String(params.userAgent || "").trim(),
   ]);
 
+  if (isFriendRequest && isValidEmail_(authorEmail)) {
+    sendAuthorFriendEmail_(authorEmail, {
+      title: String(params.title || "").trim(),
+      url: String(params.url || "").trim(),
+      name: String(params.name || "").trim(),
+      email: email,
+      message: message,
+    });
+  }
+
   return {
     ok: true,
     status: "feedback_saved",
-    message: "收到了。謝謝你把信放在這裡♫♪♩♪♩",
+    message: isFriendRequest
+      ? "收到。會把這張小紙條放到作者那邊♫♪♩♪♩"
+      : "收到了。謝謝你把信放在這裡♫♪♩♪♩",
   };
+}
+
+function sendAuthorFriendEmail_(authorEmail, request) {
+  const visitorName = request.name || "一位讀者";
+  const body = [
+    visitorName + " 想和你交朋友。",
+    "",
+    "讀者 Email：" + request.email,
+    request.message ? "小紙條：" + request.message : "",
+    request.title ? "文章：" + request.title : "",
+    request.url ? "網址：" + request.url : "",
+  ].filter(function (line) {
+    return line !== "";
+  }).join("\n");
+
+  const htmlBody =
+    '<div style="font-family:Helvetica,Arial,sans-serif;color:#174ea6;font-size:18px;line-height:1.7">' +
+    "<p>" +
+    escapeHtml_(visitorName) +
+    " 想和你交朋友。</p>" +
+    '<p style="color:#d96f9a">讀者 Email：<a style="color:#d96f9a" href="mailto:' +
+    escapeHtml_(request.email) +
+    '">' +
+    escapeHtml_(request.email) +
+    "</a></p>" +
+    (request.message ? "<p>小紙條：<br>" + escapeHtml_(request.message).replace(/\n/g, "<br>") + "</p>" : "") +
+    (request.title ? "<p>文章：" + escapeHtml_(request.title) + "</p>" : "") +
+    (request.url
+      ? '<p><a style="color:#d96f9a" href="' + escapeHtml_(request.url) + '">回到文章</a></p>'
+      : "") +
+    "</div>";
+
+  GmailApp.sendEmail(authorEmail, "有讀者想和你交朋友｜PATCH PAPER", body, {
+    name: WELCOME_SENDER_NAME,
+    htmlBody: htmlBody,
+    replyTo: request.email,
+  });
 }
 
 function saveComment_(params) {

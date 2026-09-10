@@ -594,7 +594,7 @@ function renderIssueFeedback(issue) {
     feedbackButton = document.createElement("button");
     feedbackButton.className = "article-feedback-button";
     feedbackButton.type = "button";
-    feedbackButton.textContent = "給予作者回饋～";
+    feedbackButton.textContent = "和作者交朋友～";
     feedbackButton.addEventListener("click", openFeedbackDialog);
   }
 
@@ -643,27 +643,16 @@ function setupIssueFeedback() {
       <input type="hidden" name="issue" value="" />
       <input type="hidden" name="slug" value="" />
       <input type="hidden" name="title" value="" />
+      <input type="hidden" name="author" value="" />
+      <input type="hidden" name="authorEmail" value="" />
       <input type="hidden" name="url" value="" />
       <input type="hidden" name="userAgent" value="" />
+      <input type="hidden" name="feedbackType" value="交朋友" />
 
       <div class="feedback-head">
-        <p>給予作者回饋～</p>
+        <p>和作者交朋友～</p>
         <button type="button" class="feedback-close" aria-label="關閉">×</button>
       </div>
-
-      <label>
-        這封信是
-        <select name="feedbackType">
-          <option value="給予作者回饋">給予作者回饋～</option>
-          <option value="愛的回饋">愛的回饋</option>
-          <option value="建設信">建設信</option>
-        </select>
-      </label>
-
-      <label>
-        信
-        <textarea name="message" rows="7" placeholder="可以匿名。可以很短。" required></textarea>
-      </label>
 
       <div class="feedback-grid">
         <label>
@@ -672,16 +661,21 @@ function setupIssueFeedback() {
         </label>
         <label>
           Email
-          <input name="email" type="email" placeholder="想收到回信再填" />
+          <input name="email" type="email" placeholder="你的 Email" required />
         </label>
       </div>
 
-      <p class="feedback-note">這封信只會送到 PATCH PAPER 後台，不會公開。</p>
+      <label>
+        小紙條
+        <textarea name="message" rows="5" placeholder="想說一句話也可以。"></textarea>
+      </label>
+
+      <p class="feedback-note">PATCH PAPER 會把這張小紙條收好，再轉給作者。</p>
       <p class="feedback-status" role="status" aria-live="polite"></p>
 
       <div class="feedback-actions">
         <button type="button" class="feedback-cancel">取消</button>
-        <button type="submit" class="feedback-submit">送出 ♫</button>
+        <button type="submit" class="feedback-submit">遞出去 ♫</button>
       </div>
     </form>
   `;
@@ -714,7 +708,7 @@ function openFeedbackDialog() {
   fillFeedbackForm(feedbackForm);
   feedbackStatus.textContent = "";
   feedbackDialog.showModal();
-  feedbackForm.elements.message.focus();
+  feedbackForm.elements.email.focus();
 }
 
 function fillFeedbackForm(feedbackForm) {
@@ -722,9 +716,11 @@ function fillFeedbackForm(feedbackForm) {
   feedbackForm.elements.issue.value = issue.issue || "";
   feedbackForm.elements.slug.value = issue.slug || "";
   feedbackForm.elements.title.value = issue.title || "";
+  feedbackForm.elements.author.value = issue.author || "";
+  feedbackForm.elements.authorEmail.value = issue.authorEmail || "";
   feedbackForm.elements.url.value = window.location.href;
   feedbackForm.elements.userAgent.value = navigator.userAgent || "";
-  feedbackForm.elements.feedbackType.value = "給予作者回饋";
+  feedbackForm.elements.feedbackType.value = "交朋友";
   feedbackForm.elements.message.value = "";
   feedbackForm.elements.name.value = "";
   feedbackForm.elements.email.value = "";
@@ -736,9 +732,9 @@ function submitFeedbackForm(feedbackForm) {
     return;
   }
 
-  if (!feedbackForm.elements.message.value.trim()) {
-    feedbackStatus.textContent = "信還是空的。";
-    feedbackForm.elements.message.focus();
+  if (!feedbackForm.elements.email.value.trim() || !feedbackForm.elements.email.checkValidity()) {
+    feedbackStatus.textContent = "請留下可以聯絡你的 Email。";
+    feedbackForm.elements.email.focus();
     return;
   }
 
@@ -762,7 +758,7 @@ function handleFeedbackResponse(payload) {
     return;
   }
 
-  feedbackStatus.textContent = "收到了。謝謝你把信放在這裡♫♪♩♪♩";
+  feedbackStatus.textContent = "收到。會把這張小紙條放到作者那邊♫♪♩♪♩";
   window.setTimeout(() => feedbackDialog?.close(), 1200);
 }
 
