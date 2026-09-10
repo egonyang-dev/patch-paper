@@ -664,7 +664,7 @@ function saveComment_(params) {
   return {
     ok: true,
     status: "comment_saved",
-    message: "留言已送出。",
+    message: "留言已送出。🐾 ฅ(๑*д*๑)ฅ!!",
     slug: slug,
   };
 }

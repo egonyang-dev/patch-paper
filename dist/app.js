@@ -800,8 +800,7 @@ function renderIssueComments(issue) {
     commentsSection.dataset.issueComments = "";
     commentsSection.innerHTML = `
       <div class="comments-head">
-        <p>公開留言討論區</p>
-        <span>給建設性的愛的回饋</span>
+        <p>友善討論區 (=^‥^=)</p>
       </div>
 
       <div class="comments-list" aria-live="polite"></div>
@@ -822,12 +821,12 @@ function renderIssueComments(issue) {
 
         <label>
           留言
-          <textarea name="message" rows="4" placeholder="會公開顯示。請友善一點。" required></textarea>
+          <textarea name="message" rows="4" placeholder="ฅ(=^･ω･^=)ฅ₍˄•.•˄₎و🐾" required></textarea>
         </label>
 
         <div class="comments-actions">
           <p class="comments-status" role="status" aria-live="polite"></p>
-          <button type="submit" class="comments-submit">公開送出 ♫</button>
+          <button type="submit" class="comments-submit">送出 🐾</button>
         </div>
       </form>
     `;
@@ -874,7 +873,7 @@ function loadIssueComments(slug) {
 
   script.src = url.toString();
   script.onerror = () => {
-    renderCommentsLoading("留言晚一點再讀取。");
+    renderCommentsLoading("等一下下♫♪♩♪♩");
     cleanup();
   };
   document.head.append(script);
@@ -886,12 +885,12 @@ function renderComments(payload) {
   }
 
   if (!payload?.ok || !Array.isArray(payload.comments)) {
-    renderCommentsLoading("留言晚一點再讀取。");
+    renderCommentsLoading("等一下下♫♪♩♪♩");
     return;
   }
 
   if (!payload.comments.length) {
-    renderCommentsLoading("目前還沒有人留言。");
+    renderCommentsLoading("目前還沒有人留言。🐾 (ﾐΦ ﻌ Φﾐ)");
     return;
   }
 
@@ -966,7 +965,7 @@ function handleCommentResponse(payload) {
   }
 
   const issue = currentIssue || {};
-  commentsStatus.textContent = "留言已送出。";
+  commentsStatus.textContent = "留言已送出。🐾 ฅ(๑*д*๑)ฅ!!";
   commentsForm.elements.name.value = "";
   commentsForm.elements.message.value = "";
   commentsForm.elements.issue.value = issue.issue || "";
