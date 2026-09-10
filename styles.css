@@ -492,6 +492,71 @@ h2 {
   font-size: clamp(20px, 3vw, 36px);
 }
 
+.loading-text {
+  margin: 0 0 18px;
+}
+
+.loading-chase {
+  width: min(420px, 100%);
+  overflow: hidden;
+  color: var(--pink);
+}
+
+.loading-chase-path {
+  position: relative;
+  min-height: 62px;
+}
+
+.loading-cat,
+.loading-butterfly {
+  position: absolute;
+  left: 0;
+  bottom: 8px;
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.loading-cat {
+  color: var(--blue);
+  font-size: clamp(24px, 7vw, 38px);
+  animation: cat-chase 2.8s ease-in-out infinite;
+}
+
+.loading-butterfly {
+  color: var(--pink);
+  font-size: clamp(20px, 6vw, 32px);
+  animation: butterfly-float 2.8s ease-in-out infinite;
+}
+
+@keyframes cat-chase {
+  0% {
+    transform: translate3d(0, 4px, 0);
+  }
+
+  45% {
+    transform: translate3d(min(210px, 52vw), 0, 0);
+  }
+
+  100% {
+    transform: translate3d(0, 4px, 0);
+  }
+}
+
+@keyframes butterfly-float {
+  0% {
+    transform: translate3d(min(110px, 27vw), -8px, 0) rotate(-7deg);
+  }
+
+  45% {
+    transform: translate3d(min(285px, 70vw), -22px, 0) rotate(9deg);
+  }
+
+  100% {
+    transform: translate3d(min(110px, 27vw), -8px, 0) rotate(-7deg);
+  }
+}
+
 .article-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(190px, 0.45fr);
@@ -1065,6 +1130,10 @@ h2 {
     justify-self: start;
   }
 
+  .loading-chase-path {
+    min-height: 54px;
+  }
+
   .admin-actions,
   .feedback-actions,
   .comments-actions {
@@ -1086,6 +1155,8 @@ h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .loading-cat,
+  .loading-butterfly,
   .click-mood span {
     animation-duration: 1ms;
   }

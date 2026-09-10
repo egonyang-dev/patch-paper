@@ -125,7 +125,7 @@ function loadIssueArticle() {
   if (cachedPayload) {
     renderIssueArticle(cachedPayload);
   } else {
-    renderIssueLoading("等一下下♫♪♩♪♩", "");
+    renderIssueLoading("載入中...", "");
   }
 
   const callbackName = `patchPaperIssue${Date.now()}`;
@@ -142,7 +142,7 @@ function loadIssueArticle() {
 
   const loadingTimer = window.setTimeout(() => {
     if (!didRender) {
-      renderIssueLoading("等一下下♫♪♩♪♩", "");
+      renderIssueLoading("載入中...", "");
     }
   }, 4200);
 
@@ -160,7 +160,7 @@ function loadIssueArticle() {
   script.onerror = () => {
     window.clearTimeout(loadingTimer);
     if (!didRender) {
-      renderIssueLoading("等一下下♫♪♩♪♩", "");
+      renderIssueLoading("載入中...", "");
     }
     cleanup();
   };
@@ -178,7 +178,7 @@ function loadIssueList() {
   if (cachedPayload) {
     renderIssueList(cachedPayload);
   } else {
-    renderIssueListLoading("等一下下♫♪♩♪♩");
+    renderIssueListLoading("載入中...");
   }
 
   const callbackName = `patchPaperIssues${Date.now()}`;
@@ -194,7 +194,7 @@ function loadIssueList() {
 
   const loadingTimer = window.setTimeout(() => {
     if (!didRender) {
-      renderIssueListLoading("等一下下♫♪♩♪♩");
+      renderIssueListLoading("載入中...");
     }
   }, 5200);
 
@@ -212,7 +212,7 @@ function loadIssueList() {
   script.onerror = () => {
     window.clearTimeout(loadingTimer);
     if (!didRender) {
-      renderIssueListLoading("等一下下♫♪♩♪♩");
+      renderIssueListLoading("載入中...");
     }
     cleanup();
   };
@@ -290,7 +290,7 @@ function renderIssueLoading(titleText, bodyText) {
   const body = issueArticle.querySelector("[data-issue-body]");
   kicker && (kicker.textContent = "Issue");
   title && (title.textContent = titleText);
-  body && body.replaceChildren(...plainTextToParagraphs(bodyText));
+  body && body.replaceChildren(createLoadingAnimation());
   renderIssueImage({});
   renderIssueTags({});
   renderIssueAuthor({});
@@ -728,7 +728,7 @@ function fillFeedbackForm(feedbackForm) {
 
 function submitFeedbackForm(feedbackForm) {
   if (!isConfigured()) {
-    feedbackStatus.textContent = "等一下下♫♪♩♪♩";
+    feedbackStatus.textContent = "載入中...";
     return;
   }
 
@@ -932,7 +932,7 @@ function submitCommentForm(event) {
   }
 
   if (!isConfigured()) {
-    commentsStatus.textContent = "等一下下♫♪♩♪♩";
+    commentsStatus.textContent = "載入中...";
     return;
   }
 
@@ -1017,10 +1017,36 @@ function renderIssueListLoading(message) {
     return;
   }
 
-  const loading = document.createElement("p");
+  const loading = document.createElement("div");
   loading.className = "article-empty";
-  loading.textContent = message;
+  const loadingText = document.createElement("p");
+  loadingText.className = "loading-text";
+  loadingText.textContent = message;
+  loading.append(loadingText, createLoadingAnimation());
   issueList.replaceChildren(loading);
+}
+
+function createLoadingAnimation() {
+  const wrap = document.createElement("div");
+  wrap.className = "loading-chase";
+  wrap.setAttribute("aria-label", "貓咪追蝴蝶");
+
+  const path = document.createElement("div");
+  path.className = "loading-chase-path";
+
+  const cat = document.createElement("span");
+  cat.className = "loading-cat";
+  cat.setAttribute("aria-hidden", "true");
+  cat.textContent = "=^‥^=";
+
+  const butterfly = document.createElement("span");
+  butterfly.className = "loading-butterfly";
+  butterfly.setAttribute("aria-hidden", "true");
+  butterfly.textContent = "Ƹ̵̡Ӝ̵̨̄Ʒ";
+
+  path.append(cat, butterfly);
+  wrap.append(path);
+  return wrap;
 }
 
 function getIssueReadHref(issue) {
@@ -1248,7 +1274,7 @@ function openAdminGate() {
 
 function submitAdminGate(formElement) {
   if (!isConfigured()) {
-    adminGateStatus.textContent = "等一下下♫♪♩♪♩";
+    adminGateStatus.textContent = "載入中...";
     return;
   }
 
