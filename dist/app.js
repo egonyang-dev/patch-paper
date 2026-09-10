@@ -844,13 +844,17 @@ function renderIssueComments(issue) {
   commentsForm.elements.url.value = window.location.href;
   commentsForm.elements.userAgent.value = navigator.userAgent || "";
   commentsStatus.textContent = "";
-  renderCommentsLoading("等一下下♫♪♩♪♩");
+  commentsList.replaceChildren();
   loadIssueComments(issue.slug);
 }
 
 function loadIssueComments(slug) {
-  if (!commentsList || !isConfigured()) {
-    renderCommentsLoading("等一下下♫♪♩♪♩");
+  if (!commentsList) {
+    return;
+  }
+
+  if (!isConfigured()) {
+    commentsList.replaceChildren();
     return;
   }
 
@@ -873,7 +877,7 @@ function loadIssueComments(slug) {
 
   script.src = url.toString();
   script.onerror = () => {
-    renderCommentsLoading("等一下下♫♪♩♪♩");
+    commentsList.replaceChildren();
     cleanup();
   };
   document.head.append(script);
@@ -885,7 +889,7 @@ function renderComments(payload) {
   }
 
   if (!payload?.ok || !Array.isArray(payload.comments)) {
-    renderCommentsLoading("等一下下♫♪♩♪♩");
+    commentsList.replaceChildren();
     return;
   }
 
