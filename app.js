@@ -1060,10 +1060,11 @@ function getIssueReadHref(issue) {
 }
 
 function setupIssueAdmin() {
-  if (!issueArticle) {
+  if (!issueArticle && !issueList) {
     return;
   }
 
+  const isArticlePage = Boolean(issueArticle);
   const iframeName = "patchPaperAdminFrame";
   const frame = document.createElement("iframe");
   frame.className = "hidden-frame";
@@ -1074,9 +1075,13 @@ function setupIssueAdmin() {
   const button = document.createElement("button");
   button.className = "admin-edit-button";
   button.type = "button";
-  button.setAttribute("aria-label", "編輯文章");
+  button.setAttribute("aria-label", isArticlePage ? "編輯文章" : "新增文章");
   button.textContent = "✎";
-  issueArticle.insertAdjacentElement("afterend", button);
+  if (isArticlePage) {
+    issueArticle.insertAdjacentElement("afterend", button);
+  } else {
+    issueList.closest(".article-index").insertAdjacentElement("afterend", button);
+  }
 
   adminDialog = document.createElement("dialog");
   adminDialog.className = "admin-dialog";
@@ -1179,6 +1184,8 @@ function setupIssueAdmin() {
   adminStatus = adminDialog.querySelector(".admin-status");
   adminSaveButton = adminDialog.querySelector(".admin-save");
   adminDeleteButton = adminDialog.querySelector(".admin-delete");
+  adminSaveButton.textContent = isArticlePage ? "更新文章" : "新增文章";
+  adminDeleteButton.hidden = !isArticlePage;
 
   button.addEventListener("click", () => {
     pendingAdminForm = adminForm;
@@ -1363,11 +1370,12 @@ function setAdminButtonsDisabled(disabled) {
 
 function fillAdminForm(adminForm) {
   const params = new URLSearchParams(window.location.search);
-  const slug = issueArticle.dataset.issueSlug || params.get("slug") || "03";
+  const isNewIssue = !issueArticle;
+  const slug = isNewIssue ? "" : issueArticle?.dataset.issueSlug || params.get("slug") || "03";
   const issue = currentIssue || {};
 
-  adminForm.elements.issue.value = issue.issue || slug || "03";
-  adminForm.elements.slug.value = issue.slug || slug || "03";
+  adminForm.elements.issue.value = issue.issue || slug;
+  adminForm.elements.slug.value = issue.slug || slug;
   adminForm.elements.title.value = issue.title || "";
   adminForm.elements.subject.value = issue.subject || "";
   adminForm.elements.author.value = issue.author || "";
@@ -1424,7 +1432,7 @@ function receiveAppsScriptMessage(event) {
   }
 
   if (payload.status === "saved") {
-    adminStatus.textContent = "已更新。";
+    adminStatus.textContent = issueArticle ? "已更新。" : "已新增。";
     const adminForm = adminDialog.querySelector(".admin-form");
     const previousSlug = currentIssue?.slug;
     currentIssue = {
@@ -1444,7 +1452,16 @@ function receiveAppsScriptMessage(event) {
     };
     clearIssueCaches(previousSlug);
     clearIssueCaches(currentIssue.slug);
+    clearIssueCaches();
     writeCache(`${ISSUE_CACHE_PREFIX}${currentIssue.slug}`, { ok: true, issue: currentIssue });
+    if (!issueArticle) {
+      window.setTimeout(() => {
+        adminDialog.close();
+        window.location.href = getIssueReadHref(currentIssue);
+      }, 700);
+      return;
+    }
+
     renderIssueArticle({ ok: true, issue: currentIssue });
     if (currentIssue.slug) {
       const url = new URL(window.location.href);
