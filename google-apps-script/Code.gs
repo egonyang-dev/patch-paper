@@ -345,6 +345,7 @@ function saveIssue_(params) {
 
   const issueNumber = String(params.issue || "").trim() || "03";
   const slug = String(params.slug || issueNumber).trim();
+  const originalSlug = String(params.originalSlug || "").trim();
   const title = String(params.title || "").trim() || "Issue " + issueNumber;
   const subject = String(params.subject || "").trim() || title + "｜黏  合  電  子  報";
   const body = String(params.body || "").trim();
@@ -376,10 +377,9 @@ function saveIssue_(params) {
     let existingRow = [];
 
     for (let i = 1; i < rows.length; i += 1) {
-      const rowIssue = String(rows[i][0] || "").trim();
       const rowSlug = String(rows[i][2] || "").trim();
 
-      if (rowSlug === slug || rowIssue === issueNumber) {
+      if (rowSlug === slug || (originalSlug && rowSlug === originalSlug)) {
         rowNumber = i + 1;
         existingRow = rows[i];
         break;

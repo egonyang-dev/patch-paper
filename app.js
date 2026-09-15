@@ -1092,6 +1092,7 @@ function setupIssueAdmin() {
       <input type="hidden" name="imageData" value="" />
       <input type="hidden" name="imageName" value="" />
       <input type="hidden" name="password" value="" />
+      <input type="hidden" name="originalSlug" value="" />
 
       <div class="admin-head">
         <p>PATCH PAPER editor</p>
@@ -1387,6 +1388,7 @@ function fillAdminForm(adminForm) {
   adminForm.elements.imageData.value = "";
   adminForm.elements.imageName.value = "";
   adminForm.elements.password.value = adminGatePassword;
+  adminForm.elements.originalSlug.value = isNewIssue ? "" : issue.slug || slug;
   adminForm.elements.tags.value = issue.tags || "";
   adminForm.elements.body.value = issue.body || "";
   adminForm.elements.sendNewsletter.checked = false;
