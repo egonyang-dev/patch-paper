@@ -9,6 +9,44 @@ const issueList = document.querySelector("[data-issue-list]");
 const ISSUE_CACHE_PREFIX = "patchPaperIssue:v2:";
 const ISSUE_LIST_CACHE_KEY = "patchPaperIssues:v2";
 const CACHE_MAX_AGE_MS = 1000 * 60 * 30;
+const STATIC_ISSUE_LIST_PAYLOAD = {
+  ok: true,
+  issues: [
+    {
+      issue: "1",
+      title: "My objet petit a：大珍珠紅茶拿鐵",
+      slug: "My objet petit a",
+      status: "published",
+      publishedDate: "2026/9/9 下午 9:29:19",
+      imageUrl: "https://drive.google.com/thumbnail?id=1U8IVrRIErkHwJGv3-gFgMM4kNZc-ysXt&sz=w1600",
+      tags: "#散文",
+      author: "潘姵儒",
+      url: "https://patch-paper.patchpaper-tw.workers.dev/issues/read.html?slug=My%20objet%20petit%20a",
+    },
+    {
+      issue: "1",
+      title: "《李洛克之絕地大反攻》",
+      slug: "2",
+      status: "published",
+      publishedDate: "2026/9/9 下午 9:29:19",
+      imageUrl: "https://drive.google.com/thumbnail?id=1Tk0SCwKx0kVp4xq_4aieG--DOF0hlvWU&sz=w1600",
+      tags: "#散文",
+      author: "yisght",
+      url: "https://patch-paper.patchpaper-tw.workers.dev/issues/read.html?slug=2",
+    },
+    {
+      issue: "1",
+      title: "珍藏的五種方式",
+      slug: "fiveways",
+      status: "current",
+      publishedDate: "2026.09.09",
+      imageUrl: "https://drive.google.com/thumbnail?id=1O6UrGilw7VVQqNOndElgar-uPnBEZYFl&sz=w1600",
+      tags: "#＃散文",
+      author: "王子瑄",
+      url: "https://patch-paper.patchpaper-tw.workers.dev/issues/read.html?slug=fiveways",
+    },
+  ],
+};
 let currentIssue = null;
 let adminDialog = null;
 let adminStatus = null;
@@ -119,7 +157,7 @@ function loadIssueArticle() {
   const params = new URLSearchParams(window.location.search);
   const slug = issueArticle.dataset.issueSlug || params.get("slug") || "";
   const cacheKey = `${ISSUE_CACHE_PREFIX}${slug || "current"}`;
-  const cachedPayload = readCache(cacheKey);
+  const cachedPayload = readCache(cacheKey, { allowStale: true });
   let didRender = Boolean(cachedPayload);
 
   if (cachedPayload) {
@@ -172,11 +210,13 @@ function loadIssueList() {
     return;
   }
 
-  const cachedPayload = readCache(ISSUE_LIST_CACHE_KEY);
-  let didRender = Boolean(cachedPayload);
+  const cachedPayload = readCache(ISSUE_LIST_CACHE_KEY, { allowStale: true });
+  const instantPayload = cachedPayload || STATIC_ISSUE_LIST_PAYLOAD;
+  let didRender = Boolean(instantPayload);
 
-  if (cachedPayload) {
-    renderIssueList(cachedPayload);
+  if (instantPayload) {
+    renderIssueList(instantPayload);
+    prefetchIssueArticles(instantPayload);
   } else {
     renderIssueListLoading("載入中...");
   }
@@ -205,6 +245,7 @@ function loadIssueList() {
       writeCache(ISSUE_LIST_CACHE_KEY, payload);
     }
     renderIssueList(payload);
+    prefetchIssueArticles(payload);
     cleanup();
   };
 
@@ -217,6 +258,45 @@ function loadIssueList() {
     cleanup();
   };
   document.head.append(script);
+}
+
+function prefetchIssueArticles(payload) {
+  if (!payload?.ok || !Array.isArray(payload.issues) || !isConfigured()) {
+    return;
+  }
+
+  payload.issues.forEach((issue, index) => {
+    const slug = issue.slug || issue.issue || "";
+
+    if (!slug || readCache(`${ISSUE_CACHE_PREFIX}${slug}`, { allowStale: true })) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      const callbackName = `patchPaperPrefetch${Date.now()}${index}`;
+      const url = new URL(APPS_SCRIPT_URL);
+      url.searchParams.set("action", "issue");
+      url.searchParams.set("slug", slug);
+      url.searchParams.set("callback", callbackName);
+
+      const script = document.createElement("script");
+      const cleanup = () => {
+        delete window[callbackName];
+        script.remove();
+      };
+
+      window[callbackName] = (issuePayload) => {
+        if (issuePayload?.ok && issuePayload.issue) {
+          writeCache(`${ISSUE_CACHE_PREFIX}${slug}`, issuePayload);
+        }
+        cleanup();
+      };
+
+      script.src = url.toString();
+      script.onerror = cleanup;
+      document.head.append(script);
+    }, 500 + index * 350);
+  });
 }
 
 function renderIssueArticle(payload) {
@@ -338,7 +418,7 @@ function wait(milliseconds) {
   });
 }
 
-function readCache(key) {
+function readCache(key, options = {}) {
   try {
     const raw = window.localStorage.getItem(key);
 
@@ -348,7 +428,11 @@ function readCache(key) {
 
     const cached = JSON.parse(raw);
 
-    if (!cached?.savedAt || Date.now() - cached.savedAt > CACHE_MAX_AGE_MS) {
+    if (!cached?.savedAt) {
+      return null;
+    }
+
+    if (!options.allowStale && Date.now() - cached.savedAt > CACHE_MAX_AGE_MS) {
       return null;
     }
 
