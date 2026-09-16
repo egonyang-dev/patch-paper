@@ -207,6 +207,7 @@ h2 {
 
 .statement,
 .subscribe,
+.submission,
 .details,
 .archive,
 .articles {
@@ -231,6 +232,40 @@ h2 {
 
 .statement em {
   font-style: italic;
+}
+
+.submission-copy {
+  max-width: 720px;
+  color: var(--blue);
+  font-size: clamp(20px, 3vw, 36px);
+  line-height: 1.25;
+}
+
+.submission-copy p {
+  margin-bottom: 18px;
+}
+
+.submission-mail {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38em;
+  color: var(--pink);
+  font-size: clamp(22px, 3.4vw, 42px);
+  line-height: 1.1;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.submission-mail::before {
+  content: "✉";
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.submission-mail:hover,
+.submission-mail:focus-visible {
+  color: var(--blue);
 }
 
 .symbol {
@@ -1091,6 +1126,7 @@ h2 {
 
 @media (max-width: 760px) {
   .subscribe,
+  .submission,
   .details,
   .archive,
   .articles {
